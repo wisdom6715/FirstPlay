@@ -1,0 +1,26 @@
+{
+  "name": "FirstPlay - Web Game Launcher & Discovery",
+  "short_name": "FirstPlay",
+  "description": "Play indie web games instantly without installation. Unified cross-game discovery launcher.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#06070a",
+  "theme_color": "#06070a",
+  "categories": ["games", "entertainment"],
+  "icons": [
+    {
+      "src": "/firstplay-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/firstplay-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

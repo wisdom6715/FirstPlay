@@ -1,0 +1,8 @@
+{
+  "routes": [
+    { "path": "/", "title": "FirstPlay Discover" },
+    { "path": "/promote", "title": "Promote a listing" },
+    { "path": "/pilotapp/firstplay/dashboard/authentication", "title": "Dashboard authentication" },
+    { "path": "/pilotapp/firstplay/dashboard", "title": "FirstPlay dashboard" }
+  ]
+}
