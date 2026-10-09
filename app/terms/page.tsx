@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowLeft, FileText, Gamepad2 } from 'lucide-react';
+import Image from 'next/image';
+import { ArrowLeft, FileText } from 'lucide-react';
 import { Footer } from '@/components/discover/Footer';
 
 export const metadata: Metadata = {
@@ -15,8 +16,14 @@ export default function TermsOfServicePage() {
       <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 sm:px-6 py-4">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#1422b8] text-white shadow-sm transition group-hover:scale-105">
-              <Gamepad2 size={18} className="stroke-[2.2]" />
+            <div className="relative h-8 w-8 overflow-hidden rounded-xl shadow-sm transition group-hover:scale-105">
+              <Image
+                src="/icon.png"
+                alt="FirstPlay Logo"
+                width={32}
+                height={32}
+                className="h-full w-full object-cover"
+              />
             </div>
             <span className="text-lg font-black tracking-tight text-slate-900">
               FirstPlay
@@ -124,16 +131,7 @@ export default function TermsOfServicePage() {
               </div>
 
               <div>
-                <h3 className="font-bold text-slate-900">4.4. Prize Structure &amp; Probabilities</h3>
-                <ul className="list-disc pl-5 mt-1 space-y-1">
-                  <li>Available reward outcomes: 0 GB, 500 MB, 1 GB, 1.5 GB, and 2 GB mobile internet data vouchers.</li>
-                  <li><strong>Zero-Outcome Rate:</strong> Thirty percent (30%) of spins strictly result in 0 GB (no prize won).</li>
-                  <li>The remaining seventy percent (70%) of spins distribute mobile data vouchers ranging from 500 MB to 2 GB across supported telecom networks.</li>
-                </ul>
-              </div>
-
-              <div>
-                <h3 className="font-bold text-slate-900">4.5. Redemption Process &amp; Terms</h3>
+                <h3 className="font-bold text-slate-900">4.4. Redemption Process &amp; Terms</h3>
                 <ul className="list-disc pl-5 mt-1 space-y-1">
                   <li>Winning a reward generates a unique, single-use cryptographic voucher code.</li>
                   <li>Vouchers have no cash value and cannot be exchanged, sold, or transferred for fiat currency.</li>

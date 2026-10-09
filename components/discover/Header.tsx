@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Gamepad2, Menu, X } from 'lucide-react';
+import Image from 'next/image';
+import { Menu, X } from 'lucide-react';
 import { useDevice } from '@/lib/device';
 
 export function Header() {
@@ -25,8 +26,15 @@ export function Header() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4">
         {/* Brand Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#1422b8] text-white shadow-sm transition group-hover:scale-105">
-            <Gamepad2 size={20} className="stroke-[2.2]" />
+          <div className="relative h-9 w-9 overflow-hidden rounded-xl shadow-sm transition group-hover:scale-105">
+            <Image
+              src="/icon.png"
+              alt="FirstPlay Logo"
+              width={36}
+              height={36}
+              className="h-full w-full object-cover"
+              priority
+            />
           </div>
           <span className="text-xl font-extrabold tracking-tight text-slate-900">
             FirstPlay

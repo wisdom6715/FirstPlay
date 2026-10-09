@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Gamepad2 } from 'lucide-react';
+import Image from 'next/image';
 
 export function Footer() {
   return (
@@ -12,8 +12,14 @@ export function Footer() {
           {/* Brand Info (takes 2 cols on md) */}
           <div className="md:col-span-2">
             <Link href="/" className="flex items-center gap-2.5 group">
-              <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#1422b8] text-white shadow-sm transition group-hover:scale-105">
-                <Gamepad2 size={18} className="stroke-[2.2]" />
+              <div className="relative h-8 w-8 overflow-hidden rounded-xl shadow-sm transition group-hover:scale-105">
+                <Image
+                  src="/icon.png"
+                  alt="FirstPlay Logo"
+                  width={32}
+                  height={32}
+                  className="h-full w-full object-cover"
+                />
               </div>
               <span className="text-lg font-black tracking-tight text-slate-900">
                 FirstPlay

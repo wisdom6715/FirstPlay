@@ -8,7 +8,14 @@ const lora = Lora({ subsets: ['latin'], variable: '--font-serif', display: 'swap
 export const metadata: Metadata = {
   title: 'FirstPlay | Arcade & Web Game Launcher',
   description: 'FirstPlay is the unified web game launcher and cross-game discovery network for players and indie studios.',
-  icons: { icon: '/firstplay-logo.png', apple: '/firstplay-logo.png' },
+  icons: {
+    icon: [
+      { url: '/icon.png', type: 'image/png' },
+      { url: '/firstplay-logo.png', type: 'image/png' }
+    ],
+    shortcut: '/icon.png',
+    apple: '/apple-touch-icon.png'
+  },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -38,7 +45,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <link rel="apple-touch-icon" href="/firstplay-logo.png" />
+        <link rel="icon" href="/icon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
         <script dangerouslySetInnerHTML={{ __html: lightModeScript }} />
         <script dangerouslySetInnerHTML={{ __html: pwaScript }} />
       </head>
