@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from 'next';
-import { Plus_Jakarta_Sans } from 'next/font/google';
+import { Plus_Jakarta_Sans, Lora } from 'next/font/google';
 import './globals.css';
 
 const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', display: 'swap' });
+const lora = Lora({ subsets: ['latin'], variable: '--font-serif', display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'FirstPlay | Arcade & Web Game Launcher',
@@ -32,7 +33,7 @@ const pwaScript = `if('serviceWorker' in navigator){window.addEventListener('loa
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={jakarta.variable} data-theme="light" suppressHydrationWarning>
+    <html lang="en" className={`${jakarta.variable} ${lora.variable}`} data-theme="light" suppressHydrationWarning>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

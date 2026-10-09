@@ -8,6 +8,7 @@ export type DiscoverFilter =
   | 'product'
   | 'action'
   | 'adventure'
+  | 'arcade'
   | 'casual'
   | 'multiplayer'
   | 'puzzle'
