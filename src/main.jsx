@@ -2,7 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from '@vercel/analytics/react';
 
 // Web Compatibility Adapter for Browser Environment
 if (typeof window !== 'undefined' && !window.firstPlayAPI) {
