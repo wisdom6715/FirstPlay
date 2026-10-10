@@ -1,0 +1,48 @@
+export const INITIAL_LISTINGS = [
+  {
+    id: '9ITCaLkofj1QqZzCneYN',
+    name: 'Lagos Life',
+    full_name: 'Lagos Life — Naija Life Sim',
+    category: 'game',
+    tagline: 'Naija Life Sim',
+    description: 'A Sims-style life game set in Lagos. Ride danfo, chop amala at Shitta, party at Quilox, survive NEPA and make real friends.',
+    url: 'https://lagoslife.app',
+    logo_url: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557081393_logo_Minimalist_Crown_Icon.png?alt=media&token=4bf19efe-c889-4a85-8ac9-6a9261cfdce4',
+    banner_url: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557086675_banner_ecf94e5fc0f6dd3569d4addfb4eac6bc2aed320d__1_.png?alt=media&token=f2b81c7c-35e4-49ab-9a5b-b742cfdb95a0',
+    creator: 'Varta',
+    origin: 'Nigeria',
+    tags: ['Simulation', 'Story', 'Nigeria', 'Lagos', 'Life Sim'],
+    is_featured: true,
+    auto_fullscreen: true,
+    requires_fullscreen: true,
+    status: 'active',
+    rating: 5.0,
+    plays_count: 18500,
+    created_at: '2026-03-01T00:00:00Z',
+    runtime: 'Sandboxed Web'
+  },
+  {
+    id: 'jALai3QSiF8oG3npLUPU',
+    name: 'Danfo Run',
+    full_name: 'Danfo Run — Drive the Danfo',
+    category: 'game',
+    tagline: 'Danfo Run: drive the danfo',
+    description: 'Drive the danfo from Ojuelegba to Yaba. Pick up passengers, dodge the go-slow and top the live leaderboard. Afrobeats all day',
+    url: 'https://danforun.com/',
+    logo_url: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2FLagos%20Gaming%20Speed%20Logo.png?alt=media&token=b457f1a1-e33a-4510-929e-9d4f79d2bd3b',
+    banner_url: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791550950504_banner_WhatsApp_Image_2026-10-08_at_3.47.45_PM.jpeg?alt=media&token=d7f943ba-ac56-4f67-bb49-eefb1079f060',
+    creator: 'Danfo Games',
+    origin: 'Nigeria',
+    tags: ['Arcade', 'Runner', 'Lagos', 'Danfo', 'Afrobeat'],
+    is_featured: true,
+    auto_fullscreen: true,
+    requires_fullscreen: false,
+    status: 'active',
+    rating: 5.0,
+    plays_count: 14200,
+    created_at: '2026-03-01T00:00:00Z',
+    runtime: 'Sandboxed Web'
+  }
+];
+
+export const INITIAL_FEATURED_ID = 'jALai3QSiF8oG3npLUPU';

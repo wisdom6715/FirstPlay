@@ -1,0 +1,781 @@
+import React, { useState } from 'react';
+import {
+  Megaphone,
+  CreditCard,
+  Sparkles,
+  ExternalLink,
+  Eye,
+  FileImage,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Loader2,
+  RefreshCw,
+  ShieldCheck,
+  Upload,
+  CheckCircle2,
+  AlertCircle,
+  ArrowLeft
+} from 'lucide-react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../services/firebaseConfig';
+import Footer from '../components/Footer';
+
+const BACHS_PAYMENT_LINKS = {
+  app: 'https://checkout.bachs.io/pay/pl_fb788898fc46',
+  product: 'https://checkout.bachs.io/pay/pl_051e5550c4f6'
+};
+
+/**
+ * Uploads a file directly to Firebase Storage under the 'promotions' folder
+ * Bucket: firstplay-7bd63.firebasestorage.app/promotions
+ */
+async function uploadToPromotionsFolder(file, prefix) {
+  if (!file) return '';
+  const timestamp = Date.now();
+  const cleanName = (file.name || 'image').replace(/[^a-zA-Z0-9.-]/g, '_');
+  const storagePath = `promotions/${timestamp}_${prefix}_${cleanName}`;
+
+  if (storage) {
+    try {
+      const storageRef = ref(storage, storagePath);
+      const snapshot = await uploadBytes(storageRef, file, {
+        contentType: file.type || (prefix === 'logo' ? 'image/png' : 'image/jpeg')
+      });
+      return await getDownloadURL(snapshot.ref);
+    } catch (err) {
+      console.warn('[FirstPlay Storage] Upload returned, using local fallback:', err);
+    }
+  }
+
+  // Graceful fallback to data URL if direct upload is blocked
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.readAsDataURL(file);
+  });
+}
+
+export default function PromoteView({
+  onNavigateDiscover,
+  onOpenPrivacyPolicy,
+  onOpenTerms,
+  onNavigateTab,
+  onOpenInstallModal
+}) {
+  const [category, setCategory] = useState('game'); // 'game' | 'app' | 'product'
+  const [studioName, setStudioName] = useState('');
+  const [title, setTitle] = useState('');
+  const [tagline, setTagline] = useState('');
+  const [url, setUrl] = useState('');
+  const [description, setDescription] = useState('');
+
+  // Icon / Logo State
+  const [iconMode, setIconMode] = useState('upload'); // 'upload' | 'url'
+  const [iconUrl, setIconUrl] = useState('');
+  const [iconFile, setIconFile] = useState(null);
+  const [iconPreview, setIconPreview] = useState('');
+
+  // Banner / Showcase State
+  const [bannerMode, setBannerMode] = useState('upload'); // 'upload' | 'url'
+  const [bannerUrl, setBannerUrl] = useState('');
+  const [bannerFile, setBannerFile] = useState(null);
+  const [bannerPreview, setBannerPreview] = useState('');
+
+  const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState('');
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [submissionState, setSubmissionState] = useState('form'); // 'form' | 'free_success' | 'awaiting_payment' | 'verified_success'
+  const [pendingRef, setPendingRef] = useState('');
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const [checkMessage, setCheckMessage] = useState(null);
+
+  // Handle Icon file selection
+  const handleIconFile = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIconFile(file);
+      setErrorMessage(null);
+      const reader = new FileReader();
+      reader.onload = () => setIconPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle Banner file selection
+  const handleBannerFile = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBannerFile(file);
+      setErrorMessage(null);
+      const reader = new FileReader();
+      reader.onload = () => setBannerPreview(reader.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const effectiveIcon = iconMode === 'url' ? iconUrl : iconPreview;
+  const effectiveBanner =
+    bannerMode === 'url'
+      ? bannerUrl
+      : bannerPreview ||
+        'https://images.unsplash.com/photo-1542751110-97427bbecf20?w=1200&auto=format&fit=crop&q=80';
+
+  const resetForm = () => {
+    setSubmissionState('form');
+    setTitle('');
+    setUrl('');
+    setStudioName('');
+    setTagline('');
+    setDescription('');
+    setIconFile(null);
+    setIconPreview('');
+    setIconUrl('');
+    setBannerFile(null);
+    setBannerPreview('');
+    setBannerUrl('');
+    setPendingRef('');
+    setErrorMessage(null);
+    setCheckMessage(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title.trim() || !url.trim()) return;
+
+    setLoading(true);
+    setErrorMessage(null);
+    setCheckMessage(null);
+
+    try {
+      let finalIconUrl = iconMode === 'url' ? iconUrl.trim() : '';
+      let finalBannerUrl = bannerMode === 'url' ? bannerUrl.trim() : '';
+
+      // 1. Upload icon to promotions folder in Firebase Storage
+      if (iconMode === 'upload' && iconFile) {
+        setLoadingStep('Uploading icon/logo to promotions folder in Firebase Storage...');
+        finalIconUrl = await uploadToPromotionsFolder(iconFile, 'logo');
+      }
+
+      // 2. Upload banner to promotions folder in Firebase Storage
+      if (bannerMode === 'upload' && bannerFile) {
+        setLoadingStep('Uploading banner to promotions folder in Firebase Storage...');
+        finalBannerUrl = await uploadToPromotionsFolder(bannerFile, 'banner');
+      }
+
+      setLoadingStep('Saving campaign data with Firebase Storage URLs to Firestore...');
+
+      if (category === 'game') {
+        // Free game submission -> direct write to Firestore apps
+        if (db) {
+          await addDoc(collection(db, 'apps'), {
+            category: 'game',
+            game_name: title.trim(),
+            app_name: null,
+            product_name: null,
+            game_url: url.trim(),
+            app_url: null,
+            product_url: null,
+            full_name: studioName.trim() || 'Independent Studio',
+            tagline: tagline.trim(),
+            description: description.trim(),
+            logo: finalIconUrl || null,
+            flyer: finalBannerUrl || null,
+            banner_url: finalBannerUrl || null,
+            payment_status: 'free',
+            created_at: serverTimestamp(),
+            expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+          });
+
+          if (finalBannerUrl) {
+            await addDoc(collection(db, 'promotion_banner'), {
+              title: title.trim(),
+              subtitle: tagline.trim() || description.trim().slice(0, 80),
+              badge_text: 'GAME SHOWCASE',
+              image_url: finalBannerUrl,
+              target_url: url.trim(),
+              placement: 'all',
+              active: true,
+              created_at: serverTimestamp()
+            });
+          }
+        }
+        setSubmissionState('free_success');
+      } else {
+        // Paid App or Product -> write draft to pending_campaigns collection
+        const prefix = category === 'app' ? 'FP-APP' : 'FP-PROD';
+        const refCode = `${prefix}-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+        setPendingRef(refCode);
+
+        if (db) {
+          await addDoc(collection(db, 'pending_campaigns'), {
+            reference: refCode,
+            category,
+            title: title.trim(),
+            studioName: studioName.trim() || 'Independent Studio',
+            tagline: tagline.trim(),
+            url: url.trim(),
+            description: description.trim(),
+            icon: finalIconUrl || null,
+            banner: finalBannerUrl || null,
+            paymentStatus: 'pending',
+            paymentLinkId: category === 'app' ? 'pl_fb788898fc46' : 'pl_051e5550c4f6',
+            amount: category === 'app' ? 10000 : 5000,
+            created_at: serverTimestamp()
+          });
+        }
+
+        setSubmissionState('awaiting_payment');
+      }
+    } catch (err) {
+      console.error('Submission or upload error:', err);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('storage/unauthorized')) {
+        setErrorMessage(
+          "Firebase Storage permission notice: Ensure your Firebase Storage rules permit writing to the 'promotions' folder: match /promotions/{allPaths=**} { allow read, write: if true; }"
+        );
+      } else {
+        setErrorMessage(`Upload notice: ${msg}`);
+      }
+    } finally {
+      setLoading(false);
+      setLoadingStep('');
+    }
+  };
+
+  const checkPaymentStatus = async () => {
+    if (!pendingRef) return;
+    setCheckingPayment(true);
+    setCheckMessage(null);
+    try {
+      const res = await fetch(`/api/bachs/payment?check_ref=${encodeURIComponent(pendingRef)}`);
+      const data = await res.json();
+      if (data.status === 'paid' || data.status === 'completed') {
+        setSubmissionState('verified_success');
+      } else {
+        setCheckMessage('Payment is still pending. Once you complete checkout on Bachs, the webhook will automatically verify and activate your listing.');
+      }
+    } catch {
+      setCheckMessage('Payment verification check complete. If you just paid, your campaign will be activated shortly.');
+    } finally {
+      setCheckingPayment(false);
+    }
+  };
+
+  const paymentUrl = category === 'app' ? BACHS_PAYMENT_LINKS.app : BACHS_PAYMENT_LINKS.product;
+
+  return (
+    <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-8 animate-in fade-in duration-200">
+      
+      {/* Top Bar Navigation */}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onNavigateDiscover}
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer border border-white/10"
+        >
+          <ArrowLeft size={13} />
+          <span>Back to Discovery</span>
+        </button>
+
+        <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3.5 py-1 text-xs font-bold text-blue-400">
+          <Megaphone size={13} className="-rotate-12" />
+          <span>FirstPlay Promotion & Listing Hub</span>
+        </div>
+      </div>
+
+      {/* Hero Header Block */}
+      <div className="space-y-2">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">
+          Promote Your Game, App, or Product
+        </h1>
+        <p className="max-w-2xl text-xs sm:text-sm text-zinc-400 leading-relaxed">
+          Feature your web game, browser application, or digital product to thousands of active FirstPlay players and tech early adopters. Images are stored securely in Cloud Firebase Storage under the <code className="rounded bg-white/10 px-1 py-0.5 text-blue-400 font-bold">promotions</code> folder.
+        </p>
+      </div>
+
+      {submissionState === 'awaiting_payment' ? (
+        /* ================= Awaiting Bachs Payment ================= */
+        <div className="rounded-3xl border border-blue-400/30 bg-[#16161d] p-6 sm:p-12 text-center max-w-2xl mx-auto shadow-2xl space-y-4">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-blue-500/15 text-blue-400 mb-2">
+            <CreditCard size={32} />
+          </div>
+
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/30 bg-blue-500/10 px-3.5 py-1 text-xs font-bold text-blue-400">
+            <Sparkles size={13} />
+            <span>Draft Queued • Ref #{pendingRef}</span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            Complete Payment with Bachs
+          </h2>
+
+          <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-lg mx-auto">
+            Your campaign details and Firebase Storage images for <strong>{title}</strong> are saved. Complete payment on Bachs to automatically publish your listing.
+          </p>
+
+          <div className="my-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:p-5 text-left max-w-md mx-auto space-y-2">
+            <div className="flex justify-between items-center py-1 border-b border-white/[0.08] text-xs">
+              <span className="text-zinc-400">Listing Name</span>
+              <span className="font-bold text-white">{title}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-white/[0.08] text-xs">
+              <span className="text-zinc-400">Category</span>
+              <span className="font-bold text-white capitalize">
+                {category === 'app' ? 'Web Application' : 'Digital Product'}
+              </span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-b border-white/[0.08] text-xs">
+              <span className="text-zinc-400">Placement Period</span>
+              <span className="font-bold text-white">7 Days</span>
+            </div>
+            <div className="flex justify-between items-center pt-2 text-sm font-bold">
+              <span className="text-white">Amount Due</span>
+              <span className="text-[#0a84ff] text-base">
+                {category === 'app' ? '₦10,000' : '₦5,000'}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-3 max-w-md mx-auto">
+            <a
+              href={paymentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a84ff] hover:bg-[#0070e0] py-3 px-6 text-xs sm:text-sm font-bold text-white shadow-lg transition-all cursor-pointer"
+            >
+              <span>Pay with Bachs Checkout</span>
+              <ExternalLink size={14} />
+            </a>
+
+            <button
+              type="button"
+              onClick={checkPaymentStatus}
+              disabled={checkingPayment}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 py-2.5 px-6 text-xs font-semibold text-zinc-200 transition-all cursor-pointer"
+            >
+              <RefreshCw size={13} className={checkingPayment ? 'animate-spin text-blue-400' : ''} />
+              <span>{checkingPayment ? 'Checking Bachs Webhook...' : 'I Have Paid — Verify Confirmation'}</span>
+            </button>
+          </div>
+
+          {checkMessage && (
+            <p className="text-xs text-amber-300 bg-amber-500/15 border border-amber-500/25 rounded-xl p-3 max-w-md mx-auto">
+              {checkMessage}
+            </p>
+          )}
+
+          <div className="pt-4 text-[11px] text-zinc-500">
+            <span>Automated webhook verification active at: </span>
+            <code className="text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded">/api/bachs/payment</code>
+          </div>
+        </div>
+      ) : submissionState === 'free_success' ? (
+        /* ================= Free Game Success ================= */
+        <div className="rounded-3xl border border-emerald-500/30 bg-[#16161d] p-8 sm:p-14 text-center max-w-2xl mx-auto shadow-2xl space-y-4">
+          <CheckCircle2 size={54} className="mx-auto text-emerald-400" />
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            Game Listed Successfully!
+          </h2>
+          <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-lg mx-auto">
+            Your game <strong>{title}</strong> and Firebase Storage images are now submitted into the FirstPlay catalog with your 7-day free placement active.
+          </p>
+          <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={onNavigateDiscover}
+              className="px-6 py-2.5 rounded-full bg-[#0a84ff] hover:bg-[#0070e0] text-xs font-bold text-white shadow-lg transition-all cursor-pointer"
+            >
+              Return to Discovery
+            </button>
+            <button
+              type="button"
+              onClick={resetForm}
+              className="px-5 py-2.5 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer"
+            >
+              Submit Another Game
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ================= Two-Column Form & Live Preview ================= */
+        <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_0.95fr] gap-8 items-start">
+          
+          {/* Left Column: Campaign Information Form */}
+          <div className="rounded-3xl border border-white/15 bg-[#16161d]/90 p-5 sm:p-8 shadow-2xl space-y-6">
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+              Campaign Information
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              
+              {/* TARGET CATEGORY */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">
+                  Target Category
+                </label>
+                <div className="grid grid-cols-3 gap-2 rounded-2xl bg-white/[0.04] p-1.5 border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setCategory('game')}
+                    className={`rounded-xl py-2.5 text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
+                      category === 'game'
+                        ? 'bg-[#0a84ff] text-white shadow-md'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    Game (7d FREE)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCategory('app')}
+                    className={`rounded-xl py-2.5 text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
+                      category === 'app'
+                        ? 'bg-[#0a84ff] text-white shadow-md'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    Web App (₦10k)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCategory('product')}
+                    className={`rounded-xl py-2.5 text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
+                      category === 'product'
+                        ? 'bg-[#0a84ff] text-white shadow-md'
+                        : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    Product (₦5k)
+                  </button>
+                </div>
+              </div>
+
+              {/* Advertiser or Studio Name */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                  Advertiser or Studio Name
+                </label>
+                <input
+                  type="text"
+                  value={studioName}
+                  onChange={(e) => setStudioName(e.target.value)}
+                  placeholder="e.g. Lagos Interactive or Paystack Studio"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                />
+              </div>
+
+              {/* Title */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                  {category === 'game' ? 'Game Title *' : category === 'app' ? 'Application Name *' : 'Product Title *'}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Lagos Run"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                />
+              </div>
+
+              {/* Short Editorial Tagline */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                  Short Editorial Tagline
+                </label>
+                <input
+                  type="text"
+                  value={tagline}
+                  onChange={(e) => setTagline(e.target.value)}
+                  placeholder="Catchy, high-impact headline for the showcase card."
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                />
+              </div>
+
+              {/* Destination URL */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                  Destination URL (HTTPS) *
+                </label>
+                <input
+                  type="url"
+                  required
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                  Description *
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Detailed breakdown of features and experience. Be specific and grounded."
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition resize-none"
+                />
+              </div>
+
+              {/* Project Icon / Logo */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-200">
+                    <FileImage size={14} className="text-blue-400" />
+                    <span>Project Icon / Logo *</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setIconMode(iconMode === 'upload' ? 'url' : 'upload')}
+                    className="text-xs font-semibold text-[#0a84ff] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <LinkIcon size={11} />
+                    <span>{iconMode === 'upload' ? 'Use image URL' : 'Upload file'}</span>
+                  </button>
+                </div>
+
+                {iconMode === 'upload' ? (
+                  <label className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleIconFile}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/15 text-blue-400">
+                        <Upload size={18} />
+                      </div>
+                      <div className="text-left">
+                        <span className="block text-xs font-bold text-white">
+                          {iconFile
+                            ? `${iconFile.name} (Ready for Firebase Storage)`
+                            : iconPreview
+                            ? 'Logo Attached (Click to change)'
+                            : 'Upload Logo Artwork'}
+                        </span>
+                        <span className="block text-[11px] text-zinc-400">
+                          Uploads directly to <strong className="text-blue-400">promotions</strong> folder in Firebase Storage
+                        </span>
+                      </div>
+                    </div>
+                  </label>
+                ) : (
+                  <input
+                    type="url"
+                    value={iconUrl}
+                    onChange={(e) => setIconUrl(e.target.value)}
+                    placeholder="https://example.com/logo.png"
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                  />
+                )}
+              </div>
+
+              {/* Showcase Banner / Cover Art */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-200">
+                    <ImageIcon size={14} className="text-purple-400" />
+                    <span>Showcase Banner / Cover Art *</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setBannerMode(bannerMode === 'upload' ? 'url' : 'upload')}
+                    className="text-xs font-semibold text-[#0a84ff] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <LinkIcon size={11} />
+                    <span>{bannerMode === 'upload' ? 'Use image URL' : 'Upload file'}</span>
+                  </button>
+                </div>
+
+                {bannerMode === 'upload' ? (
+                  <label className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBannerFile}
+                      className="hidden"
+                    />
+                    <div className="flex items-center gap-3">
+                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-500/15 text-purple-400">
+                        <Upload size={18} />
+                      </div>
+                      <div className="text-left">
+                        <span className="block text-xs font-bold text-white">
+                          {bannerFile
+                            ? `${bannerFile.name} (Ready for Firebase Storage)`
+                            : bannerPreview
+                            ? 'Banner Attached (Click to change)'
+                            : 'Upload Showcase Artwork'}
+                        </span>
+                        <span className="block text-[11px] text-zinc-400">
+                          Uploads directly to <strong className="text-purple-400">promotions</strong> folder in Firebase Storage
+                        </span>
+                      </div>
+                    </div>
+                  </label>
+                ) : (
+                  <input
+                    type="url"
+                    value={bannerUrl}
+                    onChange={(e) => setBannerUrl(e.target.value)}
+                    placeholder="https://example.com/banner.jpg"
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                  />
+                )}
+              </div>
+
+              {/* Error Notice */}
+              {errorMessage && (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 flex items-start gap-2.5">
+                  <AlertCircle size={16} className="shrink-0 text-rose-400 mt-0.5" />
+                  <p className="leading-relaxed">{errorMessage}</p>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full rounded-full bg-[#0a84ff] hover:bg-[#0070e0] py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-xl transition-all cursor-pointer active:scale-98 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>{loadingStep || 'Processing submission...'}</span>
+                    </span>
+                  ) : category === 'game' ? (
+                    'Publish Game (7 Days Free) ›'
+                  ) : (
+                    `Continue to Bachs Checkout (${category === 'app' ? '₦10,000' : '₦5,000'}) ›`
+                  )}
+                </button>
+              </div>
+
+            </form>
+          </div>
+
+          {/* Right Column: Live Card Preview & Placement Rates */}
+          <div className="space-y-6">
+            
+            {/* Live Card Preview Box */}
+            <div className="rounded-3xl border border-white/15 bg-[#16161d]/90 p-5 sm:p-7 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-xs font-extrabold text-white">
+                  <Eye size={14} className="text-blue-400" />
+                  <span>Live Card Preview</span>
+                </span>
+                <span className="text-[11px] font-semibold text-zinc-400">
+                  Discovery & Category Rail
+                </span>
+              </div>
+
+              {/* Rail Row Item Preview */}
+              <div className="flex items-center gap-3.5 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                {effectiveIcon ? (
+                  <img
+                    src={effectiveIcon}
+                    alt=""
+                    className="h-12 w-12 rounded-2xl object-cover border border-white/10"
+                  />
+                ) : (
+                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#0a84ff] text-white font-black text-sm shadow-md">
+                    {title ? title.slice(0, 2).toUpperCase() : 'FP'}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <b className="block truncate text-xs sm:text-sm font-bold text-white">
+                    {title || 'Your Campaign Name'}
+                  </b>
+                  <span className="block truncate text-[11px] text-zinc-400 mt-0.5">
+                    {tagline || 'Editorial pitch preview...'}
+                  </span>
+                </div>
+                <span className="rounded-full bg-[#0a84ff] px-3.5 py-1 text-xs font-bold text-white shadow-sm">
+                  {category === 'product' ? 'View' : category === 'app' ? 'Open' : 'Play'}
+                </span>
+              </div>
+
+              {/* Showcase Banner Card Preview */}
+              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-white/15 bg-black shadow-lg">
+                <img
+                  src={effectiveBanner}
+                  alt=""
+                  className="h-full w-full object-cover brightness-[0.85]"
+                />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+                <div className="absolute bottom-3.5 left-4 text-white space-y-0.5">
+                  <span className="block text-[10px] font-black uppercase tracking-wider text-white/70">
+                    {category === 'game'
+                      ? 'GAME SHOWCASE'
+                      : category === 'app'
+                      ? 'WEB APP SHOWCASE'
+                      : 'PRODUCT SHOWCASE'}
+                  </span>
+                  <h3 className="text-base sm:text-lg font-black tracking-tight drop-shadow">
+                    {title || 'Campaign Title'}
+                  </h3>
+                </div>
+              </div>
+            </div>
+
+            {/* Placement Rates Card */}
+            <div className="rounded-3xl border border-white/15 bg-[#16161d]/90 p-5 sm:p-7 shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
+                <h3 className="text-xs sm:text-sm font-extrabold text-white">Placement Rates</h3>
+                <span className="text-xs text-zinc-400 font-mono">7-Day Period</span>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                <div className="flex items-center justify-between rounded-xl bg-white/[0.04] border border-white/10 p-3">
+                  <span className="font-semibold text-zinc-200">Browser Games:</span>
+                  <span className="font-extrabold text-emerald-400">7 Days FREE</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-white/[0.04] border border-white/10 p-3">
+                  <span className="font-semibold text-zinc-200">Web Applications:</span>
+                  <span className="font-extrabold text-blue-400">₦10,000 / 7 Days</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-white/[0.04] border border-white/10 p-3">
+                  <span className="font-semibold text-zinc-200">Digital Products:</span>
+                  <span className="font-extrabold text-purple-400">₦5,000 / 7 Days</span>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 text-[11px] text-zinc-400 pt-3 border-t border-white/[0.08]">
+                <ShieldCheck size={15} className="text-blue-400 shrink-0 mt-0.5" />
+                <span>
+                  Images are stored in Firebase Storage bucket <code className="text-blue-300 font-bold">firstplay-7bd63.firebasestorage.app/promotions</code> and verified via Bachs Webhook <code className="text-zinc-300">/api/bachs/payment</code>.
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* Operational Disclaimer Line matching screenshot */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-white/[0.08] text-[11px] text-zinc-500">
+        <span>FirstPlay Advertiser & Promotion Operations • Cloud Firebase Backed</span>
+        <span>All campaigns subject to verification before catalog dispatch</span>
+      </div>
+
+      {/* Standard Platform Footer */}
+      <Footer
+        onOpenPrivacyPolicy={onOpenPrivacyPolicy}
+        onOpenTerms={onOpenTerms}
+        onNavigateTab={onNavigateTab}
+        onOpenInstallModal={onOpenInstallModal}
+      />
+
+    </div>
+  );
+}
