@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { Analytics } from "@vercel/analytics/next"
 
 // Web Compatibility Adapter for Browser Environment
 if (typeof window !== 'undefined' && !window.firstPlayAPI) {
@@ -130,5 +131,6 @@ if (typeof window !== 'undefined') {
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
+    <Analytics />
   </React.StrictMode>
 );
