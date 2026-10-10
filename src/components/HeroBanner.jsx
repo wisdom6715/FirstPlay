@@ -107,15 +107,6 @@ export default function HeroBanner({
     setSlideKey((k) => k + 1);
   };
 
-  const handleSelectDot = (idx, e) => {
-    e?.stopPropagation?.();
-    if (isControlled && onSelectIndex) {
-      onSelectIndex(idx);
-    } else {
-      setInternalIndex(idx);
-    }
-    setSlideKey((k) => k + 1);
-  };
 
   return (
     <div className="space-y-4">
@@ -293,41 +284,6 @@ export default function HeroBanner({
               <ChevronRight size={16} />
             </button>
           </>
-        )}
-
-        {/* Carousel Indicator Dots & Progress Bar (Only if not static and multiple banners) */}
-        {!isStatic && bannerList.length > 1 && (
-          <div className="absolute bottom-3 sm:bottom-4 right-4 sm:right-6 z-30 flex items-center gap-1.5 p-1 sm:p-1.5 rounded-full bg-black/50 backdrop-blur-xl border border-white/15 pointer-events-auto">
-            {bannerList.map((b, idx) => {
-              const isActive = (idx === currentIndex) || (currentItem && (b.id || b.name) === (currentItem.id || currentItem.name));
-              return (
-                <button
-                  key={`dot-${b.id || b.name || idx}`}
-                  type="button"
-                  onClick={(e) => handleSelectDot(idx, e)}
-                  title={`Ad ${idx + 1}: ${b.name}`}
-                  className={`h-2 rounded-full transition-all duration-300 cursor-pointer relative overflow-hidden ${
-                    isActive 
-                      ? 'w-7 bg-white/30' 
-                      : 'w-2 bg-white/25 hover:bg-white/50'
-                  }`}
-                >
-                  {isActive && (
-                    <div 
-                      key={`progress-${slideKey}`}
-                      className="absolute inset-0 bg-white rounded-full origin-left"
-                      style={{
-                        animation: isHovered 
-                          ? 'none' 
-                          : `bannerFill ${autoScrollSeconds}s linear forwards`,
-                        width: isHovered ? '100%' : undefined
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
         )}
       </div>
 
