@@ -227,7 +227,7 @@ export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
               <span className="text-zinc-500 text-[10px] block">Sync Mode</span>
               <span className="font-medium text-emerald-400 block mt-0.5 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                {isFirebaseLive ? 'Firebase Live' : 'Verified Local Cache'}
+                {isFirebaseLive ? 'Cloud Synced' : 'Local Cache'}
               </span>
             </div>
             <div className="p-3 rounded-xl bg-black/30 border border-white/[0.04]">

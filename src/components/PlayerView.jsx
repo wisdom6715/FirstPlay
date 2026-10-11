@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ArrowLeft, RotateCw, Maximize2, Minimize2, ExternalLink, X, ShieldAlert, ChevronDown, Gamepad2 } from 'lucide-react';
+import { Hand, RotateCw, Maximize2, Minimize2, ExternalLink, X, ShieldAlert, ChevronDown, Gamepad2 } from 'lucide-react';
 import { preloadService, PreloadState } from '../services/preloadService';
 import { isLagosLife, openGameInNewTab } from '../utils/gameUtils';
 
@@ -185,7 +185,7 @@ export default function PlayerView({
     };
   }, [isSwitcherOpen, isWindowedSwitcherOpen]);
 
-  // In-Game Top Bar mouse hover to top edge & cursor proximity tracking
+  // In-Game Top Bar mouse hover to top edge & mobile touch swipe gesture
   useEffect(() => {
     if (!activeItem) {
       setIsTopBarVisible(false);
@@ -206,12 +206,53 @@ export default function PlayerView({
       }
     };
 
+    // Mobile touch gestures: swipe down near top (<= 80px) reveals controls; swipe up hides them
+    let touchStartY = 0;
+    const handleTouchStart = (e) => {
+      if (e.touches && e.touches[0]) {
+        touchStartY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (!e.touches || !e.touches[0]) return;
+      const currentY = e.touches[0].clientY;
+      const diffY = currentY - touchStartY;
+
+      // Swiping downward from the top edge
+      if (touchStartY <= 80 && diffY > 20) {
+        setIsTopBarVisible(true);
+      }
+      // Swiping upward when top bar is visible
+      else if (isTopBarVisible && diffY < -25 && !isSwitcherOpen) {
+        setIsTopBarVisible(false);
+      }
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     };
-  }, [activeItem?.id, isBarHovered, isSwitcherOpen]);
+  }, [activeItem?.id, isBarHovered, isSwitcherOpen, isTopBarVisible]);
+
+  // Auto-hide controls on mobile after 5s of inactivity unless switcher is open or hovered
+  useEffect(() => {
+    if (isTopBarVisible && !isSwitcherOpen && !isBarHovered) {
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = setTimeout(() => {
+        setIsTopBarVisible(false);
+      }, 5000);
+    }
+    return () => {
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    };
+  }, [isTopBarVisible, isSwitcherOpen, isBarHovered]);
 
   // Clean Exit with Audio Termination
   const handleExit = () => {
@@ -263,30 +304,42 @@ export default function PlayerView({
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col bg-[#121214] select-none overflow-hidden animate-in fade-in duration-150">
-      {/* Top Edge Hover Sensor Strip across entire width */}
+      {/* Top Edge Hover & Touch Sensor Strip across entire width */}
       <div
-        className="absolute top-0 left-0 right-0 h-4 z-40 pointer-events-auto"
+        className="absolute top-0 left-0 right-0 h-5 z-40 pointer-events-auto"
         onMouseEnter={() => {
+          if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+          setIsTopBarVisible(true);
+        }}
+        onTouchStart={() => {
           if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
           setIsTopBarVisible(true);
         }}
       />
 
-      {/* Floating Trigger Tab for mobile / click to show */}
+      {/* Floating Trigger Tab for mobile / click or hand gesture to show controls */}
       <button
         type="button"
-        onClick={() => setIsTopBarVisible(prev => !prev)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsTopBarVisible(prev => !prev);
+        }}
+        onTouchEnd={(e) => {
+          e.stopPropagation();
+          setIsTopBarVisible(prev => !prev);
+        }}
         title="Toggle Game Controls"
-        className={`absolute top-0 left-1/2 -translate-x-1/2 z-40 px-3 py-1 rounded-b-xl bg-[#14151a]/85 hover:bg-[#14151a] backdrop-blur-xl border-b border-x border-white/20 text-[10px] font-bold text-zinc-300 hover:text-white flex items-center gap-1.5 shadow-xl transition-all duration-300 cursor-pointer pointer-events-auto ${
-          isTopBarVisible || isBarHovered || isSwitcherOpen ? 'translate-y-11 opacity-90' : 'translate-y-0 opacity-40 hover:opacity-100'
+        aria-label="Toggle Game Controls"
+        className={`absolute top-0 left-1/2 -translate-x-1/2 z-40 px-3.5 py-1.5 rounded-b-xl bg-[#14151a]/90 hover:bg-[#14151a] backdrop-blur-xl border-b border-x border-white/20 text-[11px] font-bold text-zinc-200 hover:text-white flex items-center gap-1.5 shadow-xl transition-all duration-300 cursor-pointer pointer-events-auto active:scale-95 ${
+          isTopBarVisible || isBarHovered || isSwitcherOpen ? 'translate-y-11 opacity-90' : 'translate-y-0 opacity-75 hover:opacity-100'
         }`}
       >
-        <Gamepad2 size={11} className="text-[#0071e3]" />
+        <Hand size={12} className="text-[#0071e3]" />
         <span>Controls</span>
         <ChevronDown size={11} className={`transition-transform duration-200 ${isTopBarVisible || isBarHovered || isSwitcherOpen ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Unified In-Game Interactive Top Bar (Reveals on top edge hover or click) */}
+      {/* Unified In-Game Interactive Top Bar */}
       <div
         className={`absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-3 md:px-5 py-2 bg-[#121318]/95 backdrop-blur-2xl border-b border-white/[0.12] shadow-2xl transition-all duration-300 ease-out select-none ${
           isTopBarVisible || isBarHovered || isSwitcherOpen
@@ -306,36 +359,24 @@ export default function PlayerView({
             }, 600);
           }
         }}
+        onTouchStart={() => {
+          if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        }}
       >
-        {/* Left: Exit to Storefront & Active Game Title */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Left: (X cancel Icon) - Clean exit with NO text */}
+        <div className="flex items-center shrink-0">
           <button
             type="button"
             onClick={handleExit}
-            title="Exit to Storefront"
-            className="h-7 sm:h-8 px-3 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer border border-white/15 backdrop-blur-md active:scale-95 shadow-sm"
+            title="Exit Game"
+            aria-label="Exit Game"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-rose-500/25 text-white hover:text-rose-400 flex items-center justify-center transition-all cursor-pointer border border-white/15 backdrop-blur-md active:scale-95 shadow-sm"
           >
-            <ArrowLeft size={13} />
-            <span>Store</span>
+            <X size={15} />
           </button>
-
-          <div className="h-4 w-[1px] bg-white/15 hidden sm:block" />
-
-          <div className="flex items-center gap-2">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-xs font-bold text-white tracking-tight truncate max-w-[100px] sm:max-w-[200px]">
-              {activeItem.name}
-            </span>
-            <span className="text-[10px] text-zinc-400 uppercase hidden md:inline font-mono">
-              [{activeItem.category}]
-            </span>
-          </div>
         </div>
 
-        {/* Center: In-Game Switch Game Dropdown Selector & Fullscreen */}
+        {/* Center: In-Game Switch Game Dropdown Selector & Fullscreen (Desktop Only) */}
         <div className="flex items-center gap-2">
           {availableGames.length > 0 && (
             <div className="relative" ref={switcherRef}>
@@ -343,15 +384,14 @@ export default function PlayerView({
                 type="button"
                 onClick={() => setIsSwitcherOpen(prev => !prev)}
                 title="List Available Games to Switch"
-                className={`h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 text-xs font-semibold active:scale-95 shadow-sm ${
+                className={`h-8 px-3.5 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold active:scale-95 shadow-sm ${
                   isSwitcherOpen
                     ? 'bg-white text-black border-white shadow-lg'
                     : 'bg-white/10 hover:bg-white/20 text-white border-white/15'
                 }`}
               >
                 <Gamepad2 size={13} />
-                <span className="hidden sm:inline">Switch Game</span>
-                <span className="sm:hidden text-[11px]">Switch</span>
+                <span>Switch</span>
                 <ChevronDown size={13} className={`transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />
               </button>
 
@@ -365,48 +405,38 @@ export default function PlayerView({
             </div>
           )}
 
+          {/* Fullscreen / Minimizer - hidden on mobile as requested */}
           <button
             type="button"
             onClick={handleToggleFullscreen}
             title={isFullscreen ? "Exit Fullscreen" : "Play in Fullscreen"}
-            className="h-7 sm:h-8 px-2.5 sm:px-3 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white flex items-center gap-1.5 text-xs font-semibold shadow-sm transition-all cursor-pointer active:scale-95"
+            className="hidden sm:flex h-8 px-3 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white items-center gap-1.5 text-xs font-semibold shadow-sm transition-all cursor-pointer active:scale-95"
           >
             {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-            <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+            <span>{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
           </button>
-
-          <span className="hidden xl:inline-block px-2.5 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.06] text-[11px] text-zinc-400">
-            Sandboxed Process
-          </span>
         </div>
 
-        {/* Right: Window & Session Controls */}
-        <div className="flex items-center gap-1 shrink-0">
+        {/* Right: Reload (always visible) & External Link (desktop only) */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             type="button"
             onClick={handleReload}
             title="Reload Experience"
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
+            aria-label="Reload Experience"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-zinc-200 hover:text-white flex items-center justify-center transition-all cursor-pointer border border-white/15 active:scale-95 shadow-sm"
           >
-            <RotateCw size={13} className={isGameLoading ? 'animate-spin text-white' : ''} />
+            <RotateCw size={14} className={isGameLoading ? 'animate-spin text-white' : ''} />
           </button>
 
           <button
             type="button"
             onClick={handleOpenExternal}
             title="Open Game in New Window"
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
+            aria-label="Open Game in New Window"
+            className="hidden sm:flex w-8 h-8 rounded-full hover:bg-white/15 text-zinc-300 hover:text-white items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
           >
             <ExternalLink size={13} />
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExit}
-            title="Exit Game and destroy process"
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-rose-500/25 text-zinc-300 hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer border border-rose-500/20 ml-1 active:scale-95"
-          >
-            <X size={14} />
           </button>
         </div>
       </div>

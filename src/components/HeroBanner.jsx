@@ -151,65 +151,53 @@ export default function HeroBanner({
           />
         </div>
 
-        {/* Layer 1: Seamless Lower-Left to Rightward Blur Mask */}
+        {/* Layer 1: Ultra-light ambient vignette (keeps 100% of banner artwork bright, vivid, and colorful) */}
         <div 
-          className="absolute inset-0 z-10 pointer-events-none rounded-2xl sm:rounded-3xl overflow-hidden"
-          style={{
-            backdropFilter: 'blur(28px) saturate(150%)',
-            WebkitBackdropFilter: 'blur(28px) saturate(150%)',
-            maskImage: 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.92) 28%, rgba(0,0,0,0.55) 48%, rgba(0,0,0,0.12) 65%, transparent 78%)',
-            WebkitMaskImage: 'linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0.92) 28%, rgba(0,0,0,0.55) 48%, rgba(0,0,0,0.12) 65%, transparent 78%)',
-            clipPath: 'inset(0 round 1.5rem)',
-            WebkitClipPath: 'inset(0 round 1.5rem)'
-          }}
-        />
-
-        {/* Layer 2: Rightward & Upward Ambient Darkness Gradients */}
-        <div 
-          className="absolute inset-0 z-10 bg-gradient-to-r from-[#0a0a0f]/95 via-[#0a0a0f]/80 via-30% via-[#0a0a0f]/40 via-55% to-transparent pointer-events-none rounded-2xl sm:rounded-3xl"
-          style={{ clipPath: 'inset(0 round 1.5rem)', WebkitClipPath: 'inset(0 round 1.5rem)' }}
-        />
-        <div 
-          className="absolute inset-0 z-10 bg-gradient-to-t from-[#0a0a0f]/90 via-[#0a0a0f]/45 via-45% to-transparent pointer-events-none rounded-2xl sm:rounded-3xl"
+          className="absolute inset-0 z-10 bg-gradient-to-t from-black/25 via-transparent to-transparent pointer-events-none rounded-2xl sm:rounded-3xl"
           style={{ clipPath: 'inset(0 round 1.5rem)', WebkitClipPath: 'inset(0 round 1.5rem)' }}
         />
 
-        {/* Layer 3: Editorial Content positioned near the lower-left portion */}
-        <div className="relative z-20 w-full h-full p-4 sm:p-7 md:p-10 flex flex-col justify-end min-h-[300px] sm:min-h-[340px] md:min-h-[380px] lg:min-h-[400px] pointer-events-none">
+        {/* Layer 2: Editorial Content inside an Apple-style Liquid Glass Card (covers ~half width on mobile so game snippet image shines through) */}
+        <div className="relative z-20 w-full h-full p-2.5 sm:p-5 md:p-8 flex flex-col justify-end min-h-[300px] sm:min-h-[340px] md:min-h-[380px] lg:min-h-[400px] pointer-events-none">
           <div 
             key={`content-${currentItem.id || currentItem.name || currentIndex}`}
-            className="max-w-xl pointer-events-auto space-y-2.5 sm:space-y-3 hero-banner-content animate-in fade-in slide-in-from-bottom-2 duration-300"
+            className="w-[54%] sm:w-[50%] md:max-w-md lg:max-w-xl pointer-events-auto p-3 sm:p-5 md:p-6 rounded-xl sm:rounded-3xl bg-black/30 backdrop-blur-2xl border border-white/20 shadow-2xl space-y-1.5 sm:space-y-2.5 md:space-y-3 hero-banner-content animate-in fade-in slide-in-from-bottom-2 duration-300 transition-all group-hover:border-white/30 group-hover:bg-black/35"
+            style={{
+              backdropFilter: 'blur(20px) saturate(170%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(170%)',
+              boxShadow: '0 20px 45px -12px rgba(0, 0, 0, 0.45), inset 0 1px 1px 0 rgba(255, 255, 255, 0.22)'
+            }}
           >
             {/* Category / Editorial Tag with rotation pill */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-block px-2.5 sm:px-3 py-1 rounded-full bg-white/15 backdrop-blur-xl border border-white/25 text-[10px] font-bold uppercase tracking-wider text-white shadow-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <span className="inline-block px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white shadow-sm truncate max-w-full">
                 {currentItem.badge_text || (currentItem.category === 'game' ? 'GAMES WE LOVE' : 'FEATURED PROMOTION')}
               </span>
 
               {currentItem.requires_fullscreen && (
-                <span className="inline-block px-2.5 py-0.5 rounded-full bg-blue-500/20 backdrop-blur-md border border-blue-400/30 text-[10px] font-semibold text-blue-300">
+                <span className="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-blue-500/25 backdrop-blur-md border border-blue-400/40 text-[9px] sm:text-[10px] font-semibold text-blue-200">
                   Auto-Fullscreen
                 </span>
               )}
             </div>
 
             {/* Prominent Title */}
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight drop-shadow-md">
+            <h2 className="text-base sm:text-2xl md:text-3xl font-black text-white tracking-tight leading-tight drop-shadow-sm truncate">
               {currentItem.name}
             </h2>
 
             {/* Metadata Line */}
-            <div className="flex items-center gap-2.5 text-xs font-medium text-zinc-300 flex-wrap pt-0.5">
+            <div className="flex items-center gap-1.5 sm:gap-2.5 text-[10px] sm:text-xs font-medium text-zinc-200 flex-wrap pt-0.5">
               <span className="font-semibold text-white uppercase tracking-wider">{currentItem.category}</span>
-              <span className="text-zinc-500">•</span>
-              <span>Instant WebGL</span>
-              <span className="text-zinc-500">•</span>
-              <span>Zero Install</span>
+              <span className="text-white/40">•</span>
+              <span className="hidden xs:inline">Instant WebGL</span>
+              <span className="text-white/40 hidden xs:inline">•</span>
+              <span className="truncate">Zero Install</span>
               {currentItem.rating && (
                 <>
-                  <span className="text-zinc-500">•</span>
-                  <span className="text-amber-400 font-bold flex items-center gap-1">
-                    <Star size={11} fill="currentColor" />
+                  <span className="text-white/40">•</span>
+                  <span className="text-amber-300 font-bold flex items-center gap-0.5">
+                    <Star size={10} fill="currentColor" />
                     <span>{currentItem.rating.toFixed(1)}</span>
                   </span>
                 </>
@@ -217,18 +205,18 @@ export default function HeroBanner({
             </div>
 
             {/* Description */}
-            <p className="text-xs md:text-sm text-zinc-200/95 line-clamp-3 max-w-lg font-normal leading-relaxed drop-shadow-sm">
+            <p className="text-[10px] sm:text-xs md:text-sm text-zinc-100/95 line-clamp-2 sm:line-clamp-3 font-normal leading-relaxed drop-shadow-sm">
               {currentItem.description}
             </p>
 
             {/* Studio / Creator line */}
-            <div className="text-[11px] text-zinc-400 font-normal">
+            <div className="text-[9px] sm:text-[11px] text-zinc-300 font-normal truncate">
               <span>Studio: </span>
-              <span className="text-zinc-200 font-semibold">{currentItem.creator || 'FirstPlay Independent Studio'}</span>
+              <span className="text-white font-semibold">{currentItem.creator || 'FirstPlay Independent Studio'}</span>
             </div>
 
             {/* Primary Action Button */}
-            <div className="flex items-center gap-2.5 sm:gap-3 pt-2 flex-wrap">
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
               {currentItem.url && (
                 <button
                   type="button"
@@ -236,16 +224,16 @@ export default function HeroBanner({
                     e.stopPropagation();
                     onPlay(currentItem);
                   }}
-                  className="px-5 sm:px-6 py-2 sm:py-2.5 rounded-full bg-white text-black font-bold text-xs tracking-wide hover:bg-zinc-200 transition-all active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer"
+                  className="px-3.5 sm:px-6 py-1.5 sm:py-2.5 rounded-full bg-white text-black font-bold text-[10px] sm:text-xs tracking-wide hover:bg-zinc-100 transition-all active:scale-95 shadow-xl flex items-center gap-1.5 cursor-pointer"
                 >
                   {isExternal ? (
                     <>
                       <span>Play in New Tab</span>
-                      <ExternalLink size={13} />
+                      <ExternalLink size={11} />
                     </>
                   ) : (
                     <>
-                      <Play size={13} fill="currentColor" />
+                      <Play size={11} fill="currentColor" />
                       <span>{actionLabel}</span>
                     </>
                   )}

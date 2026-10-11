@@ -153,19 +153,19 @@ export default function PromoteView({
       let finalIconUrl = iconMode === 'url' ? iconUrl.trim() : '';
       let finalBannerUrl = bannerMode === 'url' ? bannerUrl.trim() : '';
 
-      // 1. Upload icon to promotions folder in Firebase Storage
+      // 1. Upload icon to cloud storage
       if (iconMode === 'upload' && iconFile) {
-        setLoadingStep('Uploading icon/logo to promotions folder in Firebase Storage...');
+        setLoadingStep('Uploading project icon artwork...');
         finalIconUrl = await uploadToPromotionsFolder(iconFile, 'logo');
       }
 
-      // 2. Upload banner to promotions folder in Firebase Storage
+      // 2. Upload banner to cloud storage
       if (bannerMode === 'upload' && bannerFile) {
-        setLoadingStep('Uploading banner to promotions folder in Firebase Storage...');
+        setLoadingStep('Uploading showcase banner artwork...');
         finalBannerUrl = await uploadToPromotionsFolder(bannerFile, 'banner');
       }
 
-      setLoadingStep('Saving campaign data with Firebase Storage URLs to Firestore...');
+      setLoadingStep('Saving campaign listing...');
 
       if (category === 'game') {
         // Free game submission -> direct write to Firestore apps
@@ -235,10 +235,8 @@ export default function PromoteView({
     } catch (err) {
       console.error('Submission or upload error:', err);
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('storage/unauthorized')) {
-        setErrorMessage(
-          "Firebase Storage permission notice: Ensure your Firebase Storage rules permit writing to the 'promotions' folder: match /promotions/{allPaths=**} { allow read, write: if true; }"
-        );
+      if (msg.includes('storage/unauthorized') || msg.includes('permission')) {
+        setErrorMessage('Upload notice: Please ensure your image file is PNG, JPG, or WebP and under 5MB.');
       } else {
         setErrorMessage(`Upload notice: ${msg}`);
       }
@@ -258,7 +256,7 @@ export default function PromoteView({
       if (data.status === 'paid' || data.status === 'completed') {
         setSubmissionState('verified_success');
       } else {
-        setCheckMessage('Payment is still pending. Once you complete checkout on Bachs, the webhook will automatically verify and activate your listing.');
+        setCheckMessage('Payment is still pending. Once you complete checkout on Bachs, your listing will be automatically activated.');
       }
     } catch {
       setCheckMessage('Payment verification check complete. If you just paid, your campaign will be activated shortly.');
@@ -295,7 +293,7 @@ export default function PromoteView({
           Promote Your Game, App, or Product
         </h1>
         <p className="max-w-2xl text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          Publish browser games 100% free, or feature your web application and digital product to thousands of active FirstPlay players and tech early adopters. Images are stored securely in Cloud Firebase Storage under the <code className="rounded bg-blue-500/10 dark:bg-white/10 px-1 py-0.5 text-blue-600 dark:text-blue-400 font-bold border border-blue-400/20 dark:border-white/15">promotions</code> folder.
+          Publish browser games 100% free, or feature your web application and digital product to thousands of active FirstPlay players and tech early adopters.
         </p>
       </div>
 
@@ -316,7 +314,7 @@ export default function PromoteView({
           </h2>
 
           <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-lg mx-auto">
-            Your campaign details and Firebase Storage images for <strong>{title}</strong> are saved. Complete payment on Bachs to automatically publish your listing.
+            Your campaign details for <strong>{title}</strong> are saved. Complete payment on Bachs to automatically publish your listing.
           </p>
 
           <div className="my-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/[0.04] p-4 sm:p-5 text-left max-w-md mx-auto space-y-2">
@@ -361,7 +359,7 @@ export default function PromoteView({
               className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-zinc-200 dark:border-white/15 bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/10 py-2.5 px-6 text-xs font-semibold text-zinc-700 dark:text-zinc-200 transition-all cursor-pointer"
             >
               <RefreshCw size={13} className={checkingPayment ? 'animate-spin text-blue-500' : ''} />
-              <span>{checkingPayment ? 'Checking Bachs Webhook...' : 'I Have Paid — Verify Confirmation'}</span>
+              <span>{checkingPayment ? 'Verifying payment status...' : 'I Have Paid — Verify Confirmation'}</span>
             </button>
           </div>
 
@@ -371,9 +369,9 @@ export default function PromoteView({
             </p>
           )}
 
-          <div className="pt-4 text-[11px] text-zinc-500">
-            <span>Automated webhook verification active at: </span>
-            <code className="text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-white/5 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-white/10">/api/bachs/payment</code>
+          <div className="pt-4 text-xs font-medium text-zinc-500 dark:text-zinc-400 flex items-center justify-center gap-1.5">
+            <ShieldCheck size={14} className="text-[#0071e3] dark:text-blue-400" />
+            <span>Powered by Bachs Payment</span>
           </div>
         </div>
       ) : submissionState === 'free_success' ? (
@@ -384,7 +382,7 @@ export default function PromoteView({
             Game Published Successfully!
           </h2>
           <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-lg mx-auto">
-            Your game <strong>{title}</strong> and Firebase Storage images are now live in the FirstPlay catalog. Game publishing is 100% free!
+            Your game <strong>{title}</strong> is now live in the FirstPlay catalog. Game publishing is 100% free!
           </p>
           <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
             <button
@@ -522,7 +520,7 @@ export default function PromoteView({
               {/* Launch Behavior: Open in App vs New Tab */}
               <div>
                 <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 mb-1.5">
-                  Launch Experience (Open in App or New Tab)
+                  Launch Experience
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <button
@@ -530,15 +528,17 @@ export default function PromoteView({
                     onClick={() => setOpenInApp(true)}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       openInApp
-                        ? 'bg-blue-50/90 dark:bg-[#0a84ff]/20 border-[#0071e3] text-zinc-900 dark:text-white shadow-sm'
-                        : 'bg-zinc-50 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:text-white'
+                        ? 'bg-[#0071e3]/10 dark:bg-[#0071e3]/20 border-[#0071e3] shadow-xs'
+                        : 'bg-zinc-50 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/[0.08]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-zinc-900 dark:text-white">Play Inside App (open_in_app: true)</span>
-                      {openInApp && <CheckCircle2 size={14} className="text-[#0071e3]" />}
+                      <span className={`text-xs font-bold ${openInApp ? 'text-[#0071e3] dark:text-blue-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
+                        Play Inside FirstPlay
+                      </span>
+                      {openInApp && <CheckCircle2 size={14} className="text-[#0071e3] dark:text-blue-400 shrink-0" />}
                     </div>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
                       Loads inside FirstPlay built-in player with sandboxed controls.
                     </p>
                   </button>
@@ -548,15 +548,17 @@ export default function PromoteView({
                     onClick={() => setOpenInApp(false)}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       !openInApp
-                        ? 'bg-blue-50/90 dark:bg-[#0a84ff]/20 border-[#0071e3] text-zinc-900 dark:text-white shadow-sm'
-                        : 'bg-zinc-50 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:text-white'
+                        ? 'bg-[#0071e3]/10 dark:bg-[#0071e3]/20 border-[#0071e3] shadow-xs'
+                        : 'bg-zinc-50 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/[0.08]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-zinc-900 dark:text-white">Open in New Tab (open_in_app: false)</span>
-                      {!openInApp && <CheckCircle2 size={14} className="text-[#0071e3]" />}
+                      <span className={`text-xs font-bold ${!openInApp ? 'text-[#0071e3] dark:text-blue-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
+                        Open in New Tab
+                      </span>
+                      {!openInApp && <CheckCircle2 size={14} className="text-[#0071e3] dark:text-blue-400 shrink-0" />}
                     </div>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
                       Redirects directly to the website in a new browser tab.
                     </p>
                   </button>
@@ -610,13 +612,13 @@ export default function PromoteView({
                       <div className="text-left">
                         <span className="block text-xs font-bold text-zinc-900 dark:text-white">
                           {iconFile
-                            ? `${iconFile.name} (Ready for Firebase Storage)`
+                            ? `${iconFile.name} (Ready to upload)`
                             : iconPreview
                             ? 'Logo Attached (Click to change)'
                             : 'Upload Logo Artwork'}
                         </span>
                         <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
-                          Uploads directly to <strong className="text-[#0071e3]">promotions</strong> folder in Firebase Storage
+                          PNG, JPG, or WebP recommended (up to 5MB)
                         </span>
                       </div>
                     </div>
@@ -664,13 +666,13 @@ export default function PromoteView({
                       <div className="text-left">
                         <span className="block text-xs font-bold text-zinc-900 dark:text-white">
                           {bannerFile
-                            ? `${bannerFile.name} (Ready for Firebase Storage)`
+                            ? `${bannerFile.name} (Ready to upload)`
                             : bannerPreview
                             ? 'Banner Attached (Click to change)'
                             : 'Upload Showcase Artwork'}
                         </span>
                         <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
-                          Uploads directly to <strong className="text-purple-600 dark:text-purple-400">promotions</strong> folder in Firebase Storage
+                          High-resolution landscape banner (16:9 recommended)
                         </span>
                       </div>
                     </div>
@@ -760,24 +762,33 @@ export default function PromoteView({
               </div>
 
               {/* Showcase Banner Card Preview */}
-              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-black/10 dark:border-white/15 bg-black shadow-lg">
+              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-black/10 dark:border-white/15 bg-black/10 shadow-lg">
                 <img
                   src={effectiveBanner}
                   alt=""
-                  className="h-full w-full object-cover brightness-[0.85]"
+                  className="h-full w-full object-cover"
                 />
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                <div data-keep-white="true" className="absolute bottom-3.5 left-4 text-white space-y-0.5">
-                  <span className="block text-[10px] font-black uppercase tracking-wider text-white/70">
-                    {category === 'game'
-                      ? 'GAME SHOWCASE'
-                      : category === 'app'
-                      ? 'WEB APP SHOWCASE'
-                      : 'PRODUCT SHOWCASE'}
-                  </span>
-                  <h3 className="text-base sm:text-lg font-black tracking-tight drop-shadow text-white">
-                    {title || 'Campaign Title'}
-                  </h3>
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
+                <div data-keep-white="true" className="absolute bottom-3 left-3 right-3 text-white">
+                  <div 
+                    className="p-3 sm:p-3.5 rounded-xl bg-black/35 backdrop-blur-2xl border border-white/25 shadow-xl space-y-0.5"
+                    style={{
+                      backdropFilter: 'blur(20px) saturate(170%)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(170%)',
+                      boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 1px 0 rgba(255, 255, 255, 0.22)'
+                    }}
+                  >
+                    <span className="block text-[10px] font-black uppercase tracking-wider text-white/80">
+                      {category === 'game'
+                        ? 'GAME SHOWCASE'
+                        : category === 'app'
+                        ? 'WEB APP SHOWCASE'
+                        : 'PRODUCT SHOWCASE'}
+                    </span>
+                    <h3 className="text-sm sm:text-base font-black tracking-tight drop-shadow text-white truncate">
+                      {title || 'Campaign Title'}
+                    </h3>
+                  </div>
                 </div>
               </div>
             </div>
@@ -804,11 +815,9 @@ export default function PromoteView({
                 </div>
               </div>
 
-              <div className="flex items-start gap-2.5 text-[11px] text-zinc-500 dark:text-zinc-400 pt-3 border-t border-black/5 dark:border-white/[0.08]">
-                <ShieldCheck size={15} className="text-[#0071e3] dark:text-blue-400 shrink-0 mt-0.5" />
-                <span>
-                  Images are stored in Firebase Storage bucket <code className="text-blue-600 dark:text-blue-300 font-bold">firstplay-7bd63.firebasestorage.app/promotions</code> and verified via Bachs Webhook <code className="text-zinc-700 dark:text-zinc-300">/api/bachs/payment</code>.
-                </span>
+              <div className="flex items-center justify-center gap-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400 pt-3 border-t border-black/5 dark:border-white/[0.08]">
+                <ShieldCheck size={15} className="text-[#0071e3] dark:text-blue-400 shrink-0" />
+                <span>Powered by Bachs Payment</span>
               </div>
             </div>
 
@@ -817,9 +826,9 @@ export default function PromoteView({
         </div>
       )}
 
-      {/* Operational Disclaimer Line matching screenshot */}
+      {/* Operational Disclaimer Line */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-black/10 dark:border-white/[0.08] text-[11px] text-zinc-500 dark:text-zinc-400">
-        <span>FirstPlay Advertiser & Promotion Operations • Cloud Firebase Backed</span>
+        <span>FirstPlay Advertiser & Promotion Operations</span>
         <span>All campaigns subject to verification before catalog dispatch</span>
       </div>
 

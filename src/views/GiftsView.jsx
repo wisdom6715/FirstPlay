@@ -160,7 +160,7 @@ export default function GiftsView({ onNavigateGames }) {
               My Won Gifts ({myGifts.length})
             </h3>
           </div>
-          <span className="text-[11px] text-zinc-500">Firebase: spin_gift</span>
+          <span className="text-[11px] text-zinc-500">Rewards History</span>
         </div>
 
         {myGifts.length === 0 ? (

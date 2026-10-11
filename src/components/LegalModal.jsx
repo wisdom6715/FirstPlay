@@ -163,13 +163,13 @@ export default function LegalModal({
 
               {/* Section 4 */}
               <div className="space-y-2">
-                <h3 className="text-base font-bold text-white">4. Cloud Data & Server Interactions (Google Firebase)</h3>
+                <h3 className="text-base font-bold text-white">4. Cloud Infrastructure & Secure Data</h3>
                 <p>
-                  FirstPlay uses Google Cloud Firebase (Firestore) as its cloud infrastructure backend:
+                  FirstPlay uses secure encrypted cloud infrastructure:
                 </p>
                 <ul className="list-disc pl-5 space-y-1 text-zinc-300">
-                  <li><strong>Public Catalog Retrieval (Read-Only):</strong> The app reads curated game listings, app showcases, and promotional banners stored in public Firestore collections (<code className="text-zinc-200 bg-white/10 px-1 py-0.5 rounded">apps</code>, <code className="text-zinc-200 bg-white/10 px-1 py-0.5 rounded">promotion_banner</code>).</li>
-                  <li><strong>Anonymous Reward Voucher Generation:</strong> When an eligible user spins the daily reward wheel and wins a non-zero mobile data reward, the app generates a randomized, unlinked cryptographic voucher code (e.g. <code className="text-zinc-200 bg-white/10 px-1 py-0.5 rounded">FP-DATA-XXXXX</code>). The prize type (e.g., 500 MB, 1 GB) and the voucher code are stored in the Firestore <code className="text-zinc-200 bg-white/10 px-1 py-0.5 rounded">spin_gift</code> collection with a status of unused. No user identifiers, phone numbers, device serials, or identities are attached to this record in the app.</li>
+                  <li><strong>Public Catalog Retrieval:</strong> The app securely synchronizes curated game listings, app showcases, and promotional banners.</li>
+                  <li><strong>Anonymous Reward Voucher Generation:</strong> When an eligible user spins the daily reward wheel and wins a mobile data reward, the app generates a randomized, unlinked cryptographic voucher code (e.g. <code className="text-zinc-200 bg-white/10 px-1 py-0.5 rounded">FP-DATA-XXXXX</code>). The prize type and voucher code are securely registered with an unused status. No user identifiers, phone numbers, device serials, or personal identities are attached to this record in the app.</li>
                 </ul>
               </div>
 
@@ -204,7 +204,7 @@ export default function LegalModal({
               <div className="space-y-2">
                 <h3 className="text-base font-bold text-white">7. Diagnostic & Technical Log Data</h3>
                 <p>
-                  Like most applications, our infrastructure may receive transient network telemetry when requests are made to Firebase servers (such as IP address and timestamp) solely for network security, DDoS prevention, and rate-limiting. This telemetry is automatically handled by Google Cloud Firebase under Google’s Privacy and Security standards.
+                  Like most applications, our infrastructure may receive transient network telemetry when requests are made to cloud servers (such as IP address and timestamp) solely for network security, DDoS prevention, and rate-limiting. This telemetry is automatically handled under industry-standard cloud security protocols.
                 </p>
               </div>
 

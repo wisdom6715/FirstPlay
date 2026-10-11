@@ -111,9 +111,9 @@ export default function DiscoverView({
           <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-[#0a84ff]">
             <Sparkles size={22} />
           </div>
-          <h3 className="text-base font-bold text-white">No Live Experiences in Firebase</h3>
+          <h3 className="text-base font-bold text-white">No Experiences Available</h3>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            FirstPlay is synced with your live Firebase database. Content published to Firestore will automatically appear here.
+            Check back soon for new games, web apps, and featured experiences.
           </p>
         </div>
       ) : (
