@@ -39,9 +39,22 @@ export default function CategoriesView({
   const apps = useMemo(() => listings.filter(item => item.category === 'app'), [listings]);
   const products = useMemo(() => listings.filter(item => item.category === 'product'), [listings]);
 
-  // 1. Top Games: Sorted by plays_count (desc), then rating (desc)
+  // 1. Top Games: Lagos Life, Danfo Run, Monkey Post, and My Abuja Life must come first
   const topGames = useMemo(() => {
+    const getTopGamePriority = (item) => {
+      const name = (item.name || item.full_name || '').toLowerCase().trim();
+      if (name.includes('lagos life')) return 0;
+      if (name.includes('danfo run') || name.includes('danfo')) return 1;
+      if (name.includes('monkey post')) return 2;
+      if (name.includes('abuja')) return 3;
+      return 999;
+    };
+
     return [...games].sort((a, b) => {
+      const priorityA = getTopGamePriority(a);
+      const priorityB = getTopGamePriority(b);
+      if (priorityA !== priorityB) return priorityA - priorityB;
+
       const playsA = a.plays_count || 0;
       const playsB = b.plays_count || 0;
       if (playsB !== playsA) return playsB - playsA;
@@ -72,15 +85,18 @@ export default function CategoriesView({
     );
   }, [games]);
 
-  // All Category Pills
+  // Flag to toggle showing other categories on the UI (set to true to re-enable Web Apps & Products)
+  const SHOW_OTHER_CATEGORIES = false;
+
+  // All Category Pills (Only game categories online for now)
   const allCategoryPills = [
-    { id: 'All', label: 'All Categories' },
+    { id: 'All', label: 'All Games' },
     { id: 'Top Games', label: '🏆 Top Games', count: topGames.length },
     { id: 'New Games', label: '✨ New Games', count: newGames.length },
     ...(actionGames.length > 0 ? [{ id: 'Action', label: '⚡ Action & Shooters', count: actionGames.length }] : []),
     ...(arcadeGames.length > 0 ? [{ id: 'Arcade', label: '🕹 Arcade & Casual', count: arcadeGames.length }] : []),
-    ...(apps.length > 0 ? [{ id: 'Apps', label: '💼 Web Apps', count: apps.length }] : []),
-    ...(products.length > 0 ? [{ id: 'Products', label: '📦 Digital Products', count: products.length }] : [])
+    ...(SHOW_OTHER_CATEGORIES && apps.length > 0 ? [{ id: 'Apps', label: '💼 Web Apps', count: apps.length }] : []),
+    ...(SHOW_OTHER_CATEGORIES && products.length > 0 ? [{ id: 'Products', label: '📦 Digital Products', count: products.length }] : [])
   ];
 
   // Strictly hide any category pill that doesn't have content yet
@@ -107,9 +123,9 @@ export default function CategoriesView({
       case 'Products':
         return products;
       default:
-        return listings;
+        return SHOW_OTHER_CATEGORIES ? listings : games;
     }
-  }, [activeTag, topGames, newGames, actionGames, arcadeGames, apps, products, listings]);
+  }, [activeTag, topGames, newGames, actionGames, arcadeGames, apps, products, listings, games, SHOW_OTHER_CATEGORIES]);
 
   // Unified banner candidate pool from authentic Firebase listings
   const bannerPool = useMemo(() => {
@@ -354,8 +370,8 @@ export default function CategoriesView({
             </section>
           )}
 
-          {/* Section 3: WEB APPLICATIONS */}
-          {apps.length > 0 && (
+          {/* Section 3: WEB APPLICATIONS (Hidden for now; set SHOW_OTHER_CATEGORIES = true to display) */}
+          {SHOW_OTHER_CATEGORIES && apps.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
                 <div className="flex items-center gap-2">
@@ -390,7 +406,7 @@ export default function CategoriesView({
           )}
 
           {/* Banner after Web Apps (Slot 4: Static, if apps exist) */}
-          {staticCategoryBanners['cat-after-apps'] && (
+          {SHOW_OTHER_CATEGORIES && staticCategoryBanners['cat-after-apps'] && (
             <section className="pt-2">
               <HeroBanner
                 item={staticCategoryBanners['cat-after-apps']}
@@ -401,8 +417,8 @@ export default function CategoriesView({
             </section>
           )}
 
-          {/* Section 4: DIGITAL PRODUCTS */}
-          {products.length > 0 && (
+          {/* Section 4: DIGITAL PRODUCTS (Hidden for now; set SHOW_OTHER_CATEGORIES = true to display) */}
+          {SHOW_OTHER_CATEGORIES && products.length > 0 && (
             <section className="space-y-3">
               <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
                 <div className="flex items-center gap-2">
@@ -437,7 +453,7 @@ export default function CategoriesView({
           )}
 
           {/* Banner after Products (Slot 5: Static, if products exist) */}
-          {staticCategoryBanners['cat-after-products'] && (
+          {SHOW_OTHER_CATEGORIES && staticCategoryBanners['cat-after-products'] && (
             <section className="pt-2">
               <HeroBanner
                 item={staticCategoryBanners['cat-after-products']}

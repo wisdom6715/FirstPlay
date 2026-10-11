@@ -290,10 +290,10 @@ export default function PromoteView({
       {/* Hero Header Block */}
       <div className="space-y-2">
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-zinc-900 dark:text-white">
-          Promote Your Game, App, or Product
+          Promote Your Game
         </h1>
         <p className="max-w-2xl text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
-          Publish browser games 100% free, or feature your web application and digital product to thousands of active FirstPlay players and tech early adopters.
+          Publish browser games 100% free to thousands of active FirstPlay players and gaming enthusiasts.
         </p>
       </div>
 
@@ -419,19 +419,16 @@ export default function PromoteView({
                 <label className="block text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 uppercase tracking-wider">
                   Target Category
                 </label>
-                <div className="grid grid-cols-3 gap-2 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] p-1.5 border border-zinc-200 dark:border-white/10 category-track">
+                <div className="rounded-2xl bg-zinc-100 dark:bg-white/[0.04] p-1.5 border border-zinc-200 dark:border-white/10 category-track">
                   <button
                     type="button"
                     onClick={() => setCategory('game')}
-                    className={`rounded-xl py-2.5 text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
-                      category === 'game'
-                        ? 'bg-[#0071e3] text-white shadow-md active-category'
-                        : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
-                    }`}
-                    data-keep-white={category === 'game' ? "true" : undefined}
+                    className="w-full rounded-xl py-2.5 text-xs sm:text-sm font-extrabold bg-[#0071e3] text-white shadow-md active-category flex items-center justify-center gap-2 cursor-pointer"
+                    data-keep-white="true"
                   >
-                    Game (FREE)
+                    <span>Game (FREE)</span>
                   </button>
+                  {/* Web App (₦10k) & Product (₦5k) preserved in code for later re-enabling:
                   <button
                     type="button"
                     onClick={() => setCategory('app')}
@@ -456,6 +453,7 @@ export default function PromoteView({
                   >
                     Product (₦5k)
                   </button>
+                  */}
                 </div>
               </div>
 
@@ -805,6 +803,7 @@ export default function PromoteView({
                   <span className="font-semibold text-zinc-700 dark:text-zinc-200">Browser Games:</span>
                   <span className="font-extrabold text-emerald-600 dark:text-emerald-400">100% FREE</span>
                 </div>
+                {/* Preserved for re-enabling later:
                 <div className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 p-3">
                   <span className="font-semibold text-zinc-700 dark:text-zinc-200">Web Applications:</span>
                   <span className="font-extrabold text-blue-600 dark:text-blue-400">₦10,000 / 7 Days</span>
@@ -813,6 +812,7 @@ export default function PromoteView({
                   <span className="font-semibold text-zinc-700 dark:text-zinc-200">Digital Products:</span>
                   <span className="font-extrabold text-purple-600 dark:text-purple-400">₦5,000 / 7 Days</span>
                 </div>
+                */}
               </div>
 
               <div className="flex items-center justify-center gap-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400 pt-3 border-t border-black/5 dark:border-white/[0.08]">

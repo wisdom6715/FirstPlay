@@ -24,9 +24,22 @@ export default function DiscoverView({
 
   const games = useMemo(() => listings.filter(item => item.category === 'game'), [listings]);
 
-  // 1. Top Games: Sorted by plays_count (desc), then rating (desc)
+  // 1. Top Games: Lagos Life, Danfo Run, Monkey Post, and My Abuja Life must come first
   const topGames = useMemo(() => {
+    const getTopGamePriority = (item) => {
+      const name = (item.name || item.full_name || '').toLowerCase().trim();
+      if (name.includes('lagos life')) return 0;
+      if (name.includes('danfo run') || name.includes('danfo')) return 1;
+      if (name.includes('monkey post')) return 2;
+      if (name.includes('abuja')) return 3;
+      return 999;
+    };
+
     return [...games].sort((a, b) => {
+      const priorityA = getTopGamePriority(a);
+      const priorityB = getTopGamePriority(b);
+      if (priorityA !== priorityB) return priorityA - priorityB;
+
       const playsA = a.plays_count || 0;
       const playsB = b.plays_count || 0;
       if (playsB !== playsA) return playsB - playsA;

@@ -15,12 +15,16 @@ export default function SearchView({
 
   const isFav = (id) => favorites?.some(f => f.id === id);
 
-  // Dynamically hide any category pill that has no items in listings
+  const SHOW_OTHER_CATEGORIES = false;
+
+  // Dynamically hide any category pill that has no items in listings (Games only online for now)
   const categoryPills = [
     { id: 'all', label: 'All Results' },
     { id: 'game', label: 'Games' },
-    { id: 'app', label: 'Apps' },
-    { id: 'product', label: 'Products' }
+    ...(SHOW_OTHER_CATEGORIES ? [
+      { id: 'app', label: 'Apps' },
+      { id: 'product', label: 'Products' }
+    ] : [])
   ].filter(pill => {
     if (pill.id === 'all') return true;
     return listings.some(item => item.category === pill.id);
@@ -31,6 +35,7 @@ export default function SearchView({
   useEffect(() => {
     const term = searchTerm.toLowerCase().trim();
     const filtered = listings.filter(item => {
+      if (!SHOW_OTHER_CATEGORIES && item.category !== 'game') return false;
       const matchCat = activeCategoryFilter === 'all' || item.category === activeCategoryFilter;
       if (!matchCat) return false;
       if (!term) return true;
