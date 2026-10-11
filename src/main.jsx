@@ -110,23 +110,6 @@ if (typeof window !== 'undefined' && !window.firstPlayAPI) {
   };
 }
 
-// Register Progressive Web App Service Worker
-if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.warn('[FirstPlay PWA] Service Worker registration failed:', err);
-    });
-  });
-}
-
-// Capture PWA deferred prompt globally
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    window.__firstplay_deferred_prompt = e;
-    window.dispatchEvent(new CustomEvent('firstplay:pwa-prompt-available', { detail: e }));
-  });
-}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

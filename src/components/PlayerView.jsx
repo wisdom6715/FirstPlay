@@ -185,26 +185,16 @@ export default function PlayerView({
     };
   }, [isSwitcherOpen, isWindowedSwitcherOpen]);
 
-  // Fullscreen In-Game Top Bar auto-reveal (2.8s) & mouse cursor proximity tracking
+  // In-Game Top Bar mouse hover to top edge & cursor proximity tracking
   useEffect(() => {
-    if (!isFullscreen || !activeItem) {
+    if (!activeItem) {
       setIsTopBarVisible(false);
-      setShowHud(false);
       return;
     }
 
-    // Auto-reveal for 2.8 seconds on entering fullscreen so user knows top bar exists
-    setIsTopBarVisible(true);
-    setShowHud(true);
-    if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-    hideTimeoutRef.current = setTimeout(() => {
-      setIsTopBarVisible(false);
-      setShowHud(false);
-    }, 2800);
-
     const handleMouseMove = (e) => {
-      // If cursor is within top 50px, drop down the top bar
-      if (e.clientY <= 50) {
+      // If cursor is within top 35px, drop down the top bar
+      if (e.clientY <= 35) {
         if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
         setIsTopBarVisible(true);
       } else if (!isBarHovered && !isSwitcherOpen) {
@@ -221,7 +211,7 @@ export default function PlayerView({
       window.removeEventListener('mousemove', handleMouseMove);
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     };
-  }, [isFullscreen, activeItem?.id, isBarHovered, isSwitcherOpen]);
+  }, [activeItem?.id, isBarHovered, isSwitcherOpen]);
 
   // Clean Exit with Audio Termination
   const handleExit = () => {
@@ -273,231 +263,153 @@ export default function PlayerView({
 
   return (
     <div className="absolute inset-0 z-30 flex flex-col bg-[#121214] select-none overflow-hidden animate-in fade-in duration-150">
-      {/* Sleek Windowed Player Toolbar (Hidden during full immersion) */}
-      {!isFullscreen && (
-        <div className="h-10 bg-[#18181b]/90 backdrop-blur-2xl border-b border-white/[0.08] flex items-center justify-between px-3 z-30 shrink-0">
-          {/* Left: Back & Title info */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleExit}
-              title="Exit experience"
-              className="h-7 px-3 rounded-full bg-white/10 hover:bg-white/15 text-white flex items-center gap-1.5 text-xs font-medium transition-colors cursor-pointer border border-white/10"
-            >
-              <ArrowLeft size={13} />
-              <span>Store</span>
-            </button>
+      {/* Top Edge Hover Sensor Strip across entire width */}
+      <div
+        className="absolute top-0 left-0 right-0 h-4 z-40 pointer-events-auto"
+        onMouseEnter={() => {
+          if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+          setIsTopBarVisible(true);
+        }}
+      />
 
-            <div className="h-3.5 w-[1px] bg-white/10 hidden sm:block"></div>
+      {/* Floating Trigger Tab for mobile / click to show */}
+      <button
+        type="button"
+        onClick={() => setIsTopBarVisible(prev => !prev)}
+        title="Toggle Game Controls"
+        className={`absolute top-0 left-1/2 -translate-x-1/2 z-40 px-3 py-1 rounded-b-xl bg-[#14151a]/85 hover:bg-[#14151a] backdrop-blur-xl border-b border-x border-white/20 text-[10px] font-bold text-zinc-300 hover:text-white flex items-center gap-1.5 shadow-xl transition-all duration-300 cursor-pointer pointer-events-auto ${
+          isTopBarVisible || isBarHovered || isSwitcherOpen ? 'translate-y-11 opacity-90' : 'translate-y-0 opacity-40 hover:opacity-100'
+        }`}
+      >
+        <Gamepad2 size={11} className="text-[#0071e3]" />
+        <span>Controls</span>
+        <ChevronDown size={11} className={`transition-transform duration-200 ${isTopBarVisible || isBarHovered || isSwitcherOpen ? 'rotate-180' : ''}`} />
+      </button>
 
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-xs font-semibold text-white truncate max-w-[110px] sm:max-w-[200px] md:max-w-xs">
-                {activeItem.name}
-              </span>
-              <span className="text-[10px] text-zinc-400 uppercase hidden md:inline font-mono">
-                [{activeItem.category}]
-              </span>
-            </div>
-          </div>
+      {/* Unified In-Game Interactive Top Bar (Reveals on top edge hover or click) */}
+      <div
+        className={`absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-3 md:px-5 py-2 bg-[#121318]/95 backdrop-blur-2xl border-b border-white/[0.12] shadow-2xl transition-all duration-300 ease-out select-none ${
+          isTopBarVisible || isBarHovered || isSwitcherOpen
+            ? 'translate-y-0 opacity-100 pointer-events-auto'
+            : '-translate-y-full opacity-0 pointer-events-none'
+        }`}
+        onMouseEnter={() => {
+          setIsBarHovered(true);
+          setIsTopBarVisible(true);
+          if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        }}
+        onMouseLeave={() => {
+          setIsBarHovered(false);
+          if (!isSwitcherOpen) {
+            hideTimeoutRef.current = setTimeout(() => {
+              setIsTopBarVisible(false);
+            }, 600);
+          }
+        }}
+      >
+        {/* Left: Exit to Storefront & Active Game Title */}
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            type="button"
+            onClick={handleExit}
+            title="Exit to Storefront"
+            className="h-7 sm:h-8 px-3 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer border border-white/15 backdrop-blur-md active:scale-95 shadow-sm"
+          >
+            <ArrowLeft size={13} />
+            <span>Store</span>
+          </button>
 
-          {/* Center: Fullscreen launcher & Switch Game selector */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {availableGames.length > 0 && (
-              <div className="relative" ref={windowedSwitcherRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsWindowedSwitcherOpen(prev => !prev)}
-                  title="List Available Games to Switch"
-                  className="h-7 px-2.5 sm:px-3 rounded-full bg-white/10 hover:bg-white/15 text-white flex items-center gap-1.5 text-xs font-medium transition-colors cursor-pointer border border-white/10 active:scale-95"
-                >
-                  <Gamepad2 size={12} />
-                  <span className="hidden sm:inline">Switch Game</span>
-                  <span className="sm:hidden text-[11px]">Switch</span>
-                  <ChevronDown size={11} className={`transition-transform duration-200 ${isWindowedSwitcherOpen ? 'rotate-180' : ''}`} />
-                </button>
+          <div className="h-4 w-[1px] bg-white/15 hidden sm:block" />
 
-                <GameSwitcherMenu
-                  availableGames={availableGames}
-                  activeItem={activeItem}
-                  onSwitchGame={handleSwitchGame}
-                  isOpen={isWindowedSwitcherOpen}
-                  onClose={() => setIsWindowedSwitcherOpen(false)}
-                />
-              </div>
-            )}
-
-            {activeItem.category === 'game' && (
-              <button
-                onClick={handleToggleFullscreen}
-                title="Play in Fullscreen"
-                className="h-7 px-2 sm:px-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white flex items-center gap-1.5 text-xs font-semibold shadow-sm transition-colors cursor-pointer active:scale-95"
-              >
-                <Maximize2 size={12} />
-                <span className="hidden sm:inline">Fullscreen</span>
-              </button>
-            )}
-            <span className="hidden xl:inline-block px-2.5 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.06] text-[11px] text-zinc-400">
-              Sandboxed Process
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="text-xs font-bold text-white tracking-tight truncate max-w-[100px] sm:max-w-[200px]">
+              {activeItem.name}
+            </span>
+            <span className="text-[10px] text-zinc-400 uppercase hidden md:inline font-mono">
+              [{activeItem.category}]
             </span>
           </div>
-
-          {/* Right: Controls (Reload, External, Exit) */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={handleReload}
-              title="Reload experience"
-              className="w-7 h-7 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <RotateCw size={13} className={isGameLoading ? 'animate-spin' : ''} />
-            </button>
-
-            <button
-              onClick={handleOpenExternal}
-              title="Open in default browser"
-              className="w-7 h-7 rounded-full hover:bg-white/10 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <ExternalLink size={13} />
-            </button>
-
-            <button
-              onClick={handleExit}
-              title="Close and destroy session"
-              className="w-7 h-7 rounded-full hover:bg-rose-500/20 text-zinc-300 hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer ml-1"
-            >
-              <X size={14} />
-            </button>
-          </div>
         </div>
-      )}
 
-      {/* Fullscreen In-Game Interactive Top Bar */}
-      {isFullscreen && (
-        <>
-          {/* Top Edge Hover Sensor Strip across entire width */}
-          <div
-            className="absolute top-0 left-0 right-0 h-6 z-40 pointer-events-auto"
-            onMouseEnter={() => {
-              if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-              setIsTopBarVisible(true);
-            }}
-          />
+        {/* Center: In-Game Switch Game Dropdown Selector & Fullscreen */}
+        <div className="flex items-center gap-2">
+          {availableGames.length > 0 && (
+            <div className="relative" ref={switcherRef}>
+              <button
+                type="button"
+                onClick={() => setIsSwitcherOpen(prev => !prev)}
+                title="List Available Games to Switch"
+                className={`h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 text-xs font-semibold active:scale-95 shadow-sm ${
+                  isSwitcherOpen
+                    ? 'bg-white text-black border-white shadow-lg'
+                    : 'bg-white/10 hover:bg-white/20 text-white border-white/15'
+                }`}
+              >
+                <Gamepad2 size={13} />
+                <span className="hidden sm:inline">Switch Game</span>
+                <span className="sm:hidden text-[11px]">Switch</span>
+                <ChevronDown size={13} className={`transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-          {/* Full-bleed Glassy Top Dropdown Bar */}
-          <div
-            className={`absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-3 md:px-5 py-2 bg-[#121318]/92 backdrop-blur-2xl border-b border-white/[0.12] shadow-2xl transition-all duration-300 ease-out select-none ${
-              isTopBarVisible || isBarHovered || showHud || isSwitcherOpen
-                ? 'translate-y-0 opacity-100 pointer-events-auto'
-                : '-translate-y-full opacity-0 pointer-events-none'
-            }`}
-            onMouseEnter={() => {
-              setIsBarHovered(true);
-              setIsTopBarVisible(true);
-              if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-            }}
-            onMouseLeave={() => {
-              setIsBarHovered(false);
-              if (!isSwitcherOpen) {
-                hideTimeoutRef.current = setTimeout(() => {
-                  setIsTopBarVisible(false);
-                }, 600);
-              }
-            }}
+              <GameSwitcherMenu
+                availableGames={availableGames}
+                activeItem={activeItem}
+                onSwitchGame={handleSwitchGame}
+                isOpen={isSwitcherOpen}
+                onClose={() => setIsSwitcherOpen(false)}
+              />
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            title={isFullscreen ? "Exit Fullscreen" : "Play in Fullscreen"}
+            className="h-7 sm:h-8 px-2.5 sm:px-3 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white flex items-center gap-1.5 text-xs font-semibold shadow-sm transition-all cursor-pointer active:scale-95"
           >
-            {/* Left: Exit to Storefront & Active Game Title */}
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={handleExit}
-                title="Exit to Storefront"
-                className="h-8 px-3 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center gap-1.5 text-xs font-semibold transition-all cursor-pointer border border-white/15 backdrop-blur-md active:scale-95 shadow-sm"
-              >
-                <ArrowLeft size={13} />
-                <span>Store</span>
-              </button>
+            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            <span className="hidden sm:inline">{isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}</span>
+          </button>
 
-              <div className="h-4 w-[1px] bg-white/15 hidden sm:block" />
+          <span className="hidden xl:inline-block px-2.5 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.06] text-[11px] text-zinc-400">
+            Sandboxed Process
+          </span>
+        </div>
 
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-xs font-bold text-white tracking-tight truncate max-w-[100px] sm:max-w-[200px]">
-                  {activeItem.name}
-                </span>
-              </div>
-            </div>
+        {/* Right: Window & Session Controls */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={handleReload}
+            title="Reload Experience"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
+          >
+            <RotateCw size={13} className={isGameLoading ? 'animate-spin text-white' : ''} />
+          </button>
 
-            {/* Center: In-Game Switch Game Dropdown Selector */}
-            {availableGames.length > 0 && (
-              <div className="relative" ref={switcherRef}>
-                <button
-                  type="button"
-                  onClick={() => setIsSwitcherOpen(prev => !prev)}
-                  title="List Available Games to Switch"
-                  className={`h-8 px-2.5 sm:px-3.5 rounded-full border transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 text-xs font-semibold active:scale-95 shadow-sm ${
-                    isSwitcherOpen
-                      ? 'bg-white text-black border-white shadow-lg'
-                      : 'bg-white/10 hover:bg-white/20 text-white border-white/15'
-                  }`}
-                >
-                  <Gamepad2 size={13} />
-                  <span className="hidden sm:inline">Switch Game</span>
-                  <span className="sm:hidden text-[11px]">Switch</span>
-                  <ChevronDown size={13} className={`transition-transform duration-200 ${isSwitcherOpen ? 'rotate-180' : ''}`} />
-                </button>
+          <button
+            type="button"
+            onClick={handleOpenExternal}
+            title="Open Game in New Window"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
+          >
+            <ExternalLink size={13} />
+          </button>
 
-                <GameSwitcherMenu
-                  availableGames={availableGames}
-                  activeItem={activeItem}
-                  onSwitchGame={handleSwitchGame}
-                  isOpen={isSwitcherOpen}
-                  onClose={() => setIsSwitcherOpen(false)}
-                />
-              </div>
-            )}
-
-            {/* Right: Window & Session Controls */}
-            <div className="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
-                onClick={handleReload}
-                title="Reload Experience"
-                className="w-8 h-8 rounded-full hover:bg-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
-              >
-                <RotateCw size={13} className={isGameLoading ? 'animate-spin text-white' : ''} />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenExternal}
-                title="Open Game in New Window"
-                className="w-8 h-8 rounded-full hover:bg-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
-              >
-                <ExternalLink size={13} />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleToggleFullscreen}
-                title="Restore / Exit Fullscreen"
-                className="w-8 h-8 rounded-full hover:bg-white/15 text-zinc-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer border border-white/10 active:scale-95"
-              >
-                <Minimize2 size={13} />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExit}
-                title="Exit Game and destroy process"
-                className="w-8 h-8 rounded-full hover:bg-rose-500/25 text-zinc-300 hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer border border-rose-500/20 ml-1 active:scale-95"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-        </>
-      )}
+          <button
+            type="button"
+            onClick={handleExit}
+            title="Exit Game and destroy process"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full hover:bg-rose-500/25 text-zinc-300 hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer border border-rose-500/20 ml-1 active:scale-95"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      </div>
 
       {/* Embedded Web Workspace Container */}
       <div className="relative flex-1 w-full h-full bg-black overflow-hidden">

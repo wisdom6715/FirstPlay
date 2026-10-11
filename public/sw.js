@@ -1,18 +1,26 @@
 // FirstPlay Progressive Web App Service Worker
-const CACHE_NAME = 'firstplay-pwa-v1';
+const CACHE_NAME = 'firstplay-pwa-v2';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
   '/icon.png',
   '/icon-48.png',
+  '/icon-192.png',
+  '/icon-512.png',
   '/favicon.ico'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
+    caches.open(CACHE_NAME).then(async (cache) => {
+      await Promise.allSettled(
+        PRECACHE_ASSETS.map((asset) =>
+          cache.add(asset).catch((err) => {
+            console.warn('[PWA SW] Precache skipped for:', asset, err);
+          })
+        )
+      );
     }).then(() => self.skipWaiting())
   );
 });
@@ -33,6 +41,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+
+  // Never intercept or cache localhost development requests
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    return;
+  }
 
   // Only handle GET requests
   if (event.request.method !== 'GET') return;

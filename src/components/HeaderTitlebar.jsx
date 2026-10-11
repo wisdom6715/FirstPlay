@@ -1,7 +1,7 @@
-import React from 'react';
-import { PanelLeft, Settings, Sun, Moon, Download, Monitor, Apple, Menu } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { PanelLeft, Settings, Sun, Moon, Download, Monitor, Apple, Menu, Megaphone, Check } from 'lucide-react';
 import appLogo from '../assets/icon.png';
-import { detectUserOS } from '../utils/pwaUtils';
+import { detectUserOS, getInstallButtonLabel, isPwaInstalled } from '../utils/pwaUtils';
 
 export default function HeaderTitlebar({ 
   currentTab, 
@@ -10,10 +10,26 @@ export default function HeaderTitlebar({
   currentTheme = 'dark', 
   onToggleTheme, 
   onNavigateSettings,
+  onNavigatePromote,
+  onInstallClick,
   onDownloadClick
 }) {
   const os = detectUserOS();
-  const downloadLabel = os === 'windows' ? 'Download for Windows' : os === 'mac' ? 'Download for MacOS' : 'Download App';
+  const [isInstalled, setIsInstalled] = useState(() => isPwaInstalled());
+
+  useEffect(() => {
+    const checkState = () => setIsInstalled(isPwaInstalled());
+    window.addEventListener('firstplay:pwa-installed-detected', checkState);
+    window.addEventListener('firstplay:pwa-prompt-available', checkState);
+    window.addEventListener('appinstalled', checkState);
+    return () => {
+      window.removeEventListener('firstplay:pwa-installed-detected', checkState);
+      window.removeEventListener('firstplay:pwa-prompt-available', checkState);
+      window.removeEventListener('appinstalled', checkState);
+    };
+  }, []);
+
+  const installLabel = isInstalled ? 'Installed' : getInstallButtonLabel();
 
   const tabTitles = {
     discover: 'Discover',
@@ -59,24 +75,44 @@ export default function HeaderTitlebar({
         {currentTitle}
       </div>
 
-      {/* RIGHT SECTION: Download Button & Controls (Desktop only - removed in mobile view) */}
+      {/* RIGHT SECTION: Install Button & Controls (Desktop only - removed in mobile view) */}
       <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
-        {/* OS Specific Download Button at Top Right Corner - Visible on desktop only */}
-        {onDownloadClick && (
+        {/* Promote Button with Ads Icon */}
+        {onNavigatePromote && (
           <button
             type="button"
-            onClick={onDownloadClick}
-            title={downloadLabel}
+            onClick={onNavigatePromote}
+            title="Promote Game, App, or Product"
+            className={`h-8 px-2.5 sm:px-3 rounded-full flex items-center gap-1.5 text-xs font-semibold shadow-sm transition-all cursor-pointer border ${
+              currentTab === 'promote'
+                ? 'bg-[#0071e3]/20 text-blue-300 border-blue-400/40'
+                : 'bg-white/[0.06] hover:bg-white/[0.12] text-zinc-300 hover:text-white border-white/10'
+            }`}
+          >
+            <Megaphone size={13} className="text-[#0a84ff] shrink-0" />
+            <span className="hidden sm:inline">Promote</span>
+          </button>
+        )}
+
+        {/* OS Specific Install Button at Top Right Corner - Visible on desktop only */}
+        {(onInstallClick || onDownloadClick) && (
+          <button
+            type="button"
+            onClick={onInstallClick || onDownloadClick}
+            title={installLabel}
+            data-keep-white="true"
             className="h-8 px-3 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white hidden md:flex items-center gap-1.5 text-xs font-semibold shadow-md transition-all active:scale-95 cursor-pointer border border-blue-400/25 shrink-0"
           >
-            {os === 'windows' ? (
-              <Monitor size={13} className="shrink-0" />
+            {isInstalled ? (
+              <Check size={13} className="shrink-0 text-white" />
+            ) : os === 'windows' ? (
+              <Monitor size={13} className="shrink-0 text-white" />
             ) : os === 'mac' ? (
-              <Apple size={13} className="shrink-0" />
+              <Apple size={13} className="shrink-0 text-white" />
             ) : (
-              <Download size={13} className="shrink-0" />
+              <Download size={13} className="shrink-0 text-white" />
             )}
-            <span className="truncate">{downloadLabel}</span>
+            <span className="truncate text-white">{installLabel}</span>
           </button>
         )}
 

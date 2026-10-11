@@ -3,7 +3,7 @@ import { Download, X, Monitor, Apple } from 'lucide-react';
 import { detectUserOS, isPwaInstalled } from '../utils/pwaUtils';
 import appLogo from '../assets/icon.png';
 
-export default function PwaDownloadNotification({ onDownloadClick }) {
+export default function PwaDownloadNotification({ onInstallClick, onDownloadClick }) {
   const [isVisible, setIsVisible] = useState(false);
   const os = detectUserOS();
   const isWindows = os === 'windows';
@@ -15,15 +15,22 @@ export default function PwaDownloadNotification({ onDownloadClick }) {
     const dismissed = sessionStorage.getItem('firstplay_pwa_banner_dismissed');
     if (dismissed) return;
 
-    // Only show desktop notification on Windows and Mac (mobile/Android uses modal)
-    if (os === 'android' || os === 'ios' || window.innerWidth < 768) return;
-
-    // Show banner after 2.5 seconds of browsing so user discovers it smoothly
+    // Show notification across desktop and mobile browsers where PWA is available
     const timer = setTimeout(() => {
-      setIsVisible(true);
-    }, 2500);
+      if (!isPwaInstalled()) {
+        setIsVisible(true);
+      }
+    }, 2000);
 
-    return () => clearTimeout(timer);
+    const onInstalled = () => setIsVisible(false);
+    window.addEventListener('firstplay:pwa-installed-detected', onInstalled);
+    window.addEventListener('appinstalled', onInstalled);
+
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('firstplay:pwa-installed-detected', onInstalled);
+      window.removeEventListener('appinstalled', onInstalled);
+    };
   }, [os]);
 
   const handleDismiss = () => {
@@ -33,61 +40,63 @@ export default function PwaDownloadNotification({ onDownloadClick }) {
 
   if (!isVisible) return null;
 
-  const downloadLabel = isWindows ? 'Download for Windows' : isMac ? 'Download for MacOS' : 'Download App';
+  const installLabel = isWindows ? 'Install on Windows' : isMac ? 'Install on Mac' : 'Install App';
+  const handleTrigger = onInstallClick || onDownloadClick;
 
   return (
     <aside 
-      aria-label="Download FirstPlay app"
-      className="fixed bottom-5 right-5 z-40 max-w-sm w-[calc(100vw-2.5rem)] rounded-2xl bg-[#14151a]/95 backdrop-blur-2xl border border-white/20 shadow-2xl p-4 animate-in slide-in-from-bottom-5 fade-in duration-300 select-none text-left"
+      aria-label="Install FirstPlay app"
+      className="fixed bottom-5 right-5 z-40 max-w-sm w-[calc(100vw-2.5rem)] rounded-2xl bg-white dark:bg-[#14151a]/95 backdrop-blur-2xl border border-black/10 dark:border-white/20 shadow-2xl p-4 animate-in slide-in-from-bottom-5 fade-in duration-300 select-none text-left"
     >
       <div className="flex items-start gap-3">
         <img
           src={appLogo}
           alt="FirstPlay"
-          className="w-11 h-11 rounded-xl object-contain border border-white/15 shadow-md shrink-0"
+          className="w-11 h-11 rounded-xl object-contain border border-black/10 dark:border-white/15 shadow-md shrink-0"
         />
         <div className="flex-1 min-w-0 pr-4">
           <div className="flex items-center gap-1.5">
             {isWindows ? (
               <Monitor size={12} className="text-[#0a84ff]" />
             ) : isMac ? (
-              <Apple size={12} className="text-zinc-300" />
+              <Apple size={12} className="text-zinc-600 dark:text-zinc-300" />
             ) : (
               <Download size={12} className="text-[#0a84ff]" />
             )}
-            <h4 className="text-xs font-bold text-white tracking-tight">
-              Get FirstPlay Desktop
+            <h4 className="text-xs font-bold text-zinc-900 dark:text-white tracking-tight">
+              Install FirstPlay App
             </h4>
           </div>
-          <p className="text-[11px] text-zinc-300 mt-1 leading-relaxed">
-            Install FirstPlay for {isWindows ? 'Windows' : isMac ? 'MacOS' : 'Desktop'} with zero download wait time and instant gameplay.
+          <p className="text-[11px] text-zinc-600 dark:text-zinc-300 mt-1 leading-relaxed">
+            Install FirstPlay to launch directly as a standalone app on your {isWindows ? 'Windows PC' : isMac ? 'Mac' : 'device'} with instant gameplay.
           </p>
         </div>
         <button
           onClick={handleDismiss}
           title="Dismiss"
-          className="text-zinc-400 hover:text-white p-1 rounded-md hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+          className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0"
         >
           <X size={14} />
         </button>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 pt-1 border-t border-white/[0.08]">
+      <div className="mt-3 flex items-center gap-2 pt-1 border-t border-black/5 dark:border-white/[0.08]">
         <button
           type="button"
           onClick={() => {
-            onDownloadClick?.();
+            handleTrigger?.();
             handleDismiss();
           }}
+          data-keep-white="true"
           className="flex-1 h-8 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold flex items-center justify-center gap-1.5 shadow-md transition-all active:scale-95 cursor-pointer"
         >
-          <Download size={12} />
-          <span>{downloadLabel}</span>
+          <Download size={12} className="text-white" />
+          <span className="text-white">{installLabel}</span>
         </button>
         <button
           type="button"
           onClick={handleDismiss}
-          className="h-8 px-3 rounded-full text-xs font-medium text-zinc-400 hover:text-white transition-colors cursor-pointer"
+          className="h-8 px-3 rounded-full text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer"
         >
           Later
         </button>

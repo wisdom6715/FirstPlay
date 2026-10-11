@@ -12,14 +12,59 @@ import PromoteView from './views/PromoteView';
 import { catalogService } from './services/catalogService';
 import { preloadService, PreloadState } from './services/preloadService';
 import { isLagosLife, openGameInNewTab } from './utils/gameUtils';
-import { triggerPwaInstall, detectUserOS, isPwaInstalled } from './utils/pwaUtils';
+import { triggerPwaInstall, detectUserOS } from './utils/pwaUtils';
 import PwaDownloadNotification from './components/PwaDownloadNotification';
-import InstallAppModal from './components/InstallAppModal';
 import LegalModal from './components/LegalModal';
-import { Minimize2, X } from 'lucide-react';
+import { Minimize2, X, Check, Download, Info } from 'lucide-react';
+
+// URL Route Synchronization Helpers
+function getTabFromPath(pathname) {
+  const clean = (pathname || '').toLowerCase().replace(/^\/+|\/+$/g, '');
+  if (clean === 'promote') return 'promote';
+  if (clean === 'settings') return 'settings';
+  if (clean === 'search') return 'search';
+  if (clean === 'category' || clean === 'categories') return 'category';
+  if (clean === 'favourite' || clean === 'favourites' || clean === 'favorites') return 'favourite';
+  return 'discover';
+}
+
+function getPathFromTab(tab) {
+  if (tab === 'discover') return '/';
+  return `/${tab}`;
+}
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState('discover');
+  const [currentTab, setCurrentTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return getTabFromPath(window.location.pathname);
+    }
+    return 'discover';
+  });
+
+  const navigateToTab = (tab, push = true) => {
+    setCurrentTab(tab);
+    if (typeof window !== 'undefined') {
+      const targetPath = getPathFromTab(tab);
+      if (window.location.pathname !== targetPath) {
+        if (push) {
+          window.history.pushState({ tab }, '', targetPath);
+        } else {
+          window.history.replaceState({ tab }, '', targetPath);
+        }
+      }
+    }
+  };
+
+  // Synchronize browser back/forward buttons with active view
+  useEffect(() => {
+    const handlePopState = () => {
+      const tab = getTabFromPath(window.location.pathname);
+      setCurrentTab(tab);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [targetSection, setTargetSection] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [listings, setListings] = useState([]);
@@ -37,11 +82,19 @@ export default function App() {
     }
     return true;
   });
-  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+  const [installToast, setInstallToast] = useState(null);
   const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
   const [legalDocType, setLegalDocType] = useState('privacy');
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('firstplay_theme') || 'dark';
+    const version = typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme_ver') : null;
+    if (version !== 'v2_light') {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('firstplay_theme_ver', 'v2_light');
+        localStorage.setItem('firstplay_theme', 'light');
+      }
+      return 'light';
+    }
+    return (typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme') : null) || 'light';
   });
 
   // Synchronize and apply theme mode
@@ -52,6 +105,13 @@ export default function App() {
         resolved = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
       }
       document.documentElement.setAttribute('data-theme', resolved);
+      if (resolved === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+      }
       localStorage.setItem('firstplay_theme', targetTheme);
     };
 
@@ -154,27 +214,13 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // On Android: download button is changed to a pop up modal (only on Android)
-  useEffect(() => {
-    const os = detectUserOS();
-    if (os !== 'android') return;
-    if (isPwaInstalled()) return;
-    const dismissed = sessionStorage.getItem('firstplay_android_modal_dismissed');
-    if (dismissed) return;
-
-    const timer = setTimeout(() => {
-      setIsInstallModalOpen(true);
-    }, 1800);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   const handlePlay = (item) => {
     const updated = catalogService.recordPlay(item);
     setRecentlyPlayed(updated);
 
-    // Always open Lagos Life in another tab. Just Lagos Life.
-    if (isLagosLife(item)) {
+    // If Lagos Life OR configured with open_in_app: false, redirect / open in new tab
+    if (isLagosLife(item) || item?.open_in_app === false) {
       openGameInNewTab(item);
       return;
     }
@@ -215,17 +261,17 @@ export default function App() {
 
   const handleNavigateCategory = (cat) => {
     if (cat === 'library') {
-      setCurrentTab('favourite');
+      navigateToTab('favourite');
     } else {
       setCategoryFilter(cat);
-      setCurrentTab('category');
+      navigateToTab('category');
     }
   };
 
   const handleNavigateSection = (sectionId) => {
     if (currentTab !== 'discover') {
       setTargetSection(sectionId);
-      setCurrentTab('discover');
+      navigateToTab('discover');
     } else {
       const el = document.getElementById(sectionId) ||
                  (sectionId === 'trending-section' ? document.getElementById('trending') : null) ||
@@ -244,11 +290,56 @@ export default function App() {
     setRecentlyPlayed([]);
   };
 
-  const handleDownloadClick = async () => {
+  const handleInstallClick = async () => {
     const outcome = await triggerPwaInstall();
-    if (outcome !== 'accepted') {
-      setIsInstallModalOpen(true);
+    const os = detectUserOS();
+    const isApple = os === 'ios' || os === 'mac';
+
+    if (outcome === 'accepted') {
+      setInstallToast({
+        type: 'success',
+        message: 'Installing FirstPlay! Opening directly as a standalone app.'
+      });
+      setTimeout(() => setInstallToast(null), 4000);
+      return;
     }
+
+    if (outcome === 'already_installed') {
+      setInstallToast({
+        type: 'info',
+        message: os === 'windows'
+          ? 'FirstPlay is already installed on your PC! Launch it directly from your Start Menu, Chrome Apps, or desktop.'
+          : os === 'android'
+          ? 'FirstPlay is already installed on your device! Check your home screen or app drawer.'
+          : 'FirstPlay is already installed on your device! You can launch it directly from your apps.'
+      });
+      setTimeout(() => setInstallToast(null), 5000);
+      return;
+    }
+
+    if (outcome === 'dismissed') {
+      return;
+    }
+
+    // outcome === 'not_supported'
+    // NOTE: NEVER show "Tap browser menu" on Windows and Android!
+    if (isApple) {
+      setInstallToast({
+        type: 'hint',
+        message: os === 'ios'
+          ? 'To install on iOS: Tap Share (square with arrow) and select "Add to Home Screen".'
+          : 'To install on Mac Safari: Select File > "Add to Dock" to install FirstPlay.'
+      });
+    } else {
+      // On Windows / Android, if Chrome didn't prompt, the app is already installed in the browser profile
+      setInstallToast({
+        type: 'info',
+        message: os === 'windows'
+          ? 'FirstPlay is already installed on your Windows PC! Look for FirstPlay in your Start Menu or Chrome Apps (chrome://apps).'
+          : 'FirstPlay is already installed on this device! Look for FirstPlay on your home screen or apps.'
+      });
+    }
+    setTimeout(() => setInstallToast(null), 5000);
   };
 
   const handleOpenPrivacyPolicy = () => {
@@ -287,11 +378,12 @@ export default function App() {
           onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
           currentTheme={theme}
           onToggleTheme={() => setTheme(prev => prev === 'dark' ? 'light' : 'dark')}
-          onNavigateSettings={() => setCurrentTab('settings')}
-          onDownloadClick={handleDownloadClick}
+          onNavigateSettings={() => navigateToTab('settings')}
+          onNavigatePromote={() => navigateToTab('promote')}
+          onInstallClick={handleInstallClick}
           onOpenSearch={() => {
             setSearchInitialQuery('');
-            setCurrentTab('search');
+            navigateToTab('search');
           }}
         />
       )}
@@ -315,14 +407,14 @@ export default function App() {
               <Sidebar
                 currentTab={currentTab}
                 setTab={(tab) => {
-                  setCurrentTab(tab);
+                  navigateToTab(tab);
                   if (typeof window !== 'undefined' && window.innerWidth < 768) {
                     setIsSidebarOpen(false);
                   }
                 }}
                 onSearchClick={() => {
                   setSearchInitialQuery('');
-                  setCurrentTab('search');
+                  navigateToTab('search');
                   if (typeof window !== 'undefined' && window.innerWidth < 768) {
                     setIsSidebarOpen(false);
                   }
@@ -335,7 +427,7 @@ export default function App() {
                     setIsSidebarOpen(false);
                   }
                 }}
-                onOpenInstallModal={() => setIsInstallModalOpen(true)}
+                onInstallDirect={handleInstallClick}
               />
             </div>
           )}
@@ -357,7 +449,7 @@ export default function App() {
                     recentlyPlayed={recentlyPlayed}
                     onPlay={handlePlay}
                     onNavigateCategory={handleNavigateCategory}
-                    onNavigateTab={setCurrentTab}
+                    onNavigateTab={navigateToTab}
                     onNavigateSection={handleNavigateSection}
                     targetSection={targetSection}
                     onClearTargetSection={() => setTargetSection(null)}
@@ -365,7 +457,6 @@ export default function App() {
                     onToggleFavorite={handleToggleFavorite}
                     onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
                     onOpenTerms={handleOpenTerms}
-                    onOpenInstallModal={() => setIsInstallModalOpen(true)}
                   />
                 )}
 
@@ -376,7 +467,7 @@ export default function App() {
                     onPlay={handlePlay}
                     onToggleFavorite={handleToggleFavorite}
                     onClearHistory={handleClearHistory}
-                    onNavigateDiscover={() => setCurrentTab('discover')}
+                    onNavigateDiscover={() => navigateToTab('discover')}
                   />
                 )}
 
@@ -391,9 +482,8 @@ export default function App() {
                     onToggleFavorite={handleToggleFavorite}
                     onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
                     onOpenTerms={handleOpenTerms}
-                    onNavigateTab={setCurrentTab}
+                    onNavigateTab={navigateToTab}
                     onNavigateSection={handleNavigateSection}
-                    onOpenInstallModal={() => setIsInstallModalOpen(true)}
                   />
                 )}
 
@@ -416,11 +506,11 @@ export default function App() {
 
                 {currentTab === 'promote' && (
                   <PromoteView
-                    onNavigateDiscover={() => setCurrentTab('discover')}
+                    currentTheme={theme}
+                    onNavigateDiscover={() => navigateToTab('discover')}
                     onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
                     onOpenTerms={handleOpenTerms}
-                    onNavigateTab={setCurrentTab}
-                    onOpenInstallModal={() => setIsInstallModalOpen(true)}
+                    onNavigateTab={navigateToTab}
                   />
                 )}
               </>
@@ -452,22 +542,47 @@ export default function App() {
         )}
       </div>
 
-      {/* PWA Download Notification */}
-      <PwaDownloadNotification onDownloadClick={handleDownloadClick} />
+      {/* PWA Install Notification (Theme-aware direct install banner) */}
+      <PwaDownloadNotification onInstallClick={handleInstallClick} />
 
-      {/* PWA / Desktop App Install Guidance Modal */}
-      <InstallAppModal
-        isOpen={isInstallModalOpen}
-        onClose={() => {
-          sessionStorage.setItem('firstplay_android_modal_dismissed', 'true');
-          setIsInstallModalOpen(false);
-        }}
-        onInstallDirect={triggerPwaInstall}
-      />
+      {/* Floating Install Toast (High-contrast, crystal-clear readability, theme-aware) */}
+      {installToast && (
+        <div 
+          role="status"
+          aria-live="polite"
+          className="fixed top-14 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[calc(100vw-2rem)] sm:w-auto px-4 py-3 rounded-2xl bg-white dark:bg-[#1c1c1e] text-[#1d1d1f] dark:text-white text-xs font-semibold shadow-2xl border border-black/10 dark:border-white/15 flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-200 select-none"
+        >
+          {installToast.type === 'success' ? (
+            <div className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Check size={14} className="stroke-[2.5]" />
+            </div>
+          ) : installToast.type === 'info' ? (
+            <div className="w-6 h-6 rounded-full bg-[#0071e3]/15 text-[#0071e3] dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Check size={14} className="stroke-[2.5]" />
+            </div>
+          ) : (
+            <div className="w-6 h-6 rounded-full bg-blue-500/15 text-[#0071e3] dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Info size={14} className="stroke-[2.5]" />
+            </div>
+          )}
+          <span className="flex-1 text-[#1d1d1f] dark:text-zinc-100 font-semibold leading-relaxed">
+            {installToast.message}
+          </span>
+          <button 
+            type="button" 
+            onClick={() => setInstallToast(null)}
+            className="w-6 h-6 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-800 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition-colors ml-1 cursor-pointer shrink-0"
+            title="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Legal Privacy Policy & Terms of Service Modal */}
       <LegalModal
         isOpen={isLegalModalOpen}
+        currentTheme={theme}
         initialDoc={legalDocType}
         onClose={() => setIsLegalModalOpen(false)}
       />

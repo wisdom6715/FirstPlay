@@ -10,8 +10,9 @@ export default function ContentCard({
 }) {
   const [isHovered, setIsHovered] = useState(false);
   const isLagos = isLagosLife(item);
+  const isExternal = isLagos || item.open_in_app === false;
 
-  const actionLabel = isLagos
+  const actionLabel = isExternal
     ? 'NEW TAB'
     : item.category === 'game' 
       ? 'PLAY' 
@@ -130,7 +131,7 @@ export default function ContentCard({
                 }}
                 className="flex-1 h-8 rounded-lg bg-[#e58b20] hover:bg-[#f59e0b] text-black font-bold text-[11px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-transform active:scale-95 shadow-sm cursor-pointer"
               >
-                {isLagos ? <ExternalLink size={12} /> : <Play size={12} fill="currentColor" />}
+                {isExternal ? <ExternalLink size={12} /> : <Play size={12} fill="currentColor" />}
                 <span>{actionLabel}</span>
               </button>
             )}

@@ -18,8 +18,7 @@ export default function DiscoverView({
   favorites = [],
   onToggleFavorite,
   onOpenPrivacyPolicy,
-  onOpenTerms,
-  onOpenInstallModal
+  onOpenTerms
 }) {
   const isFav = (id) => favorites?.some(f => f.id === id);
 
@@ -233,7 +232,6 @@ export default function DiscoverView({
             onNavigateTab={onNavigateTab}
             onNavigateCategory={onNavigateCategory}
             onNavigateSection={onNavigateSection}
-            onOpenInstallModal={onOpenInstallModal}
           />
         </>
       )}

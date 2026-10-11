@@ -16,8 +16,7 @@ export default function CategoriesView({
   onOpenPrivacyPolicy,
   onOpenTerms,
   onNavigateTab,
-  onNavigateSection,
-  onOpenInstallModal
+  onNavigateSection
 }) {
   const [selectedTag, setSelectedTag] = useState(selectedCategory || 'All');
 
@@ -459,7 +458,6 @@ export default function CategoriesView({
         onNavigateTab={onNavigateTab}
         onNavigateCategory={handleSelectCategory}
         onNavigateSection={onNavigateSection}
-        onOpenInstallModal={onOpenInstallModal}
       />
 
     </div>

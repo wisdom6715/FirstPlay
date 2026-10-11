@@ -14,8 +14,9 @@ export default function DetailsModal({
   if (!item) return null;
 
   const isLagos = isLagosLife(item);
+  const isExternal = isLagos || item.open_in_app === false;
   const isFree = item.category === 'game' || !item.price || item.price === 0;
-  const actionLabel = isLagos ? 'Play in New Tab' : item.category === 'game' ? 'Play' : isFree ? 'Get' : `₦${item.price?.toLocaleString() || '10,000'}`;
+  const actionLabel = isExternal ? 'Play in New Tab' : item.category === 'game' ? 'Play' : isFree ? 'Get' : `₦${item.price?.toLocaleString() || '10,000'}`;
 
   const related = allItems
     .filter(other => other.id !== item.id && other.category === item.category)
@@ -72,7 +73,7 @@ export default function DetailsModal({
                     }}
                     className="px-6 py-1.5 rounded-full bg-white text-black font-semibold text-xs tracking-wide hover:bg-zinc-200 transition-all active:scale-95 shadow-md flex items-center gap-1.5 cursor-pointer"
                   >
-                    {isLagos ? <ExternalLink size={12} /> : <Play size={12} fill="currentColor" />}
+                    {isExternal ? <ExternalLink size={12} /> : <Play size={12} fill="currentColor" />}
                     <span>{actionLabel}</span>
                   </button>
                 )}

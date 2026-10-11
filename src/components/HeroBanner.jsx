@@ -79,7 +79,8 @@ export default function HeroBanner({
   if (!currentItem) return null;
 
   const isLagos = isLagosLife(currentItem);
-  const actionLabel = isLagos
+  const isExternal = isLagos || currentItem.open_in_app === false;
+  const actionLabel = isExternal
     ? 'Play in New Tab'
     : currentItem.category === 'game' 
       ? 'Play' 
@@ -237,7 +238,7 @@ export default function HeroBanner({
                   }}
                   className="px-5 sm:px-6 py-2 sm:py-2.5 rounded-full bg-white text-black font-bold text-xs tracking-wide hover:bg-zinc-200 transition-all active:scale-95 shadow-xl flex items-center gap-2 cursor-pointer"
                 >
-                  {isLagos ? (
+                  {isExternal ? (
                     <>
                       <span>Play in New Tab</span>
                       <ExternalLink size={13} />

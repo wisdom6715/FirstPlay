@@ -120,9 +120,9 @@ export function normalizeAppDoc(docId, data) {
     rating: data.rating || 5.0,
     plays_count: data.plays_count || 0,
     requires_fullscreen: Boolean(data.requires_fullscreen),
-    is_featured: Boolean(data.is_featured),
     status: data.status || 'active',
     payment_reference: data.payment_reference || null,
+    open_in_app: data.open_in_app !== undefined ? Boolean(data.open_in_app) : true,
     created_at: createdAtStr,
     expiration_date: expiryDateStr
   };

@@ -6,8 +6,7 @@ export default function Footer({
   onOpenTerms, 
   onNavigateTab,
   onNavigateCategory,
-  onNavigateSection,
-  onOpenInstallModal 
+  onNavigateSection
 }) {
   const [infoModal, setInfoModal] = useState(null); // 'about' | 'how-it-works' | null
 
@@ -64,7 +63,7 @@ export default function Footer({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         
         {/* Top Grid: Brand & Navigation Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-10">
           
           {/* Brand Info (Spans 2 columns on large screens) */}
           <div className="lg:col-span-2 space-y-3">
@@ -140,52 +139,7 @@ export default function Footer({
             </ul>
           </div>
 
-          {/* Column 2: DOWNLOAD */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-white">
-              Download
-            </h4>
-            <ul className="space-y-2.5 text-xs text-zinc-400">
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onOpenInstallModal?.('ios')}
-                  className="hover:text-white transition-colors cursor-pointer text-left"
-                >
-                  App Store
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onOpenInstallModal?.('android')}
-                  className="hover:text-white transition-colors cursor-pointer text-left"
-                >
-                  Google Play
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onOpenInstallModal?.('windows')}
-                  className="hover:text-white transition-colors cursor-pointer text-left"
-                >
-                  Windows
-                </button>
-              </li>
-              <li>
-                <button
-                  type="button"
-                  onClick={() => onOpenInstallModal?.('macos')}
-                  className="hover:text-white transition-colors cursor-pointer text-left"
-                >
-                  macOS
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Column 3: COMMUNITY */}
+          {/* Column 2: COMMUNITY */}
           <div className="space-y-3">
             <h4 className="text-xs font-bold uppercase tracking-wider text-white">
               Community
@@ -193,34 +147,12 @@ export default function Footer({
             <ul className="space-y-2.5 text-xs text-zinc-400">
               <li>
                 <a
-                  href="https://x.com/firstplay_fun"
+                  href="https://x.com/wisdomDev67"
                   target="_blank"
                   rel="noreferrer"
-                  className="hover:text-white transition-colors text-left inline-flex items-center gap-1"
+                  className="hover:text-white transition-colors text-left inline-flex items-center gap-1.5"
                 >
-                  <span>X</span>
-                  <ExternalLink size={10} className="text-zinc-500" />
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://instagram.com/firstplay_fun"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors text-left inline-flex items-center gap-1"
-                >
-                  <span>Instagram</span>
-                  <ExternalLink size={10} className="text-zinc-500" />
-                </a>
-              </li>
-              <li>
-                <a
-                  href="https://tiktok.com/@firstplay_fun"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="hover:text-white transition-colors text-left inline-flex items-center gap-1"
-                >
-                  <span>Tiktok</span>
+                  <span>X (@wisdomDev67)</span>
                   <ExternalLink size={10} className="text-zinc-500" />
                 </a>
               </li>

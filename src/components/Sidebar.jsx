@@ -1,6 +1,6 @@
-import React from 'react';
-import { Star, Heart, LayoutGrid, Search, Settings, Sun, Moon, X, Download } from 'lucide-react';
-import { detectUserOS } from '../utils/pwaUtils';
+import React, { useState, useEffect } from 'react';
+import { Star, Heart, LayoutGrid, Search, Settings, Sun, Moon, X, Download, Megaphone, Check } from 'lucide-react';
+import { detectUserOS, isPwaInstalled } from '../utils/pwaUtils';
 
 export default function Sidebar({ 
   currentTab, 
@@ -10,14 +10,28 @@ export default function Sidebar({
   currentTheme = 'dark',
   onToggleTheme,
   onClose,
-  onOpenInstallModal,
+  onInstallDirect,
   className = ''
 }) {
   const isAndroid = detectUserOS() === 'android';
+  const [isInstalled, setIsInstalled] = useState(() => isPwaInstalled());
+
+  useEffect(() => {
+    const checkState = () => setIsInstalled(isPwaInstalled());
+    window.addEventListener('firstplay:pwa-installed-detected', checkState);
+    window.addEventListener('firstplay:pwa-prompt-available', checkState);
+    window.addEventListener('appinstalled', checkState);
+    return () => {
+      window.removeEventListener('firstplay:pwa-installed-detected', checkState);
+      window.removeEventListener('firstplay:pwa-prompt-available', checkState);
+      window.removeEventListener('appinstalled', checkState);
+    };
+  }, []);
   const navItems = [
     { id: 'discover', label: 'Discover', icon: Star },
     { id: 'category', label: 'Category', icon: LayoutGrid },
-    { id: 'favourite', label: 'Favourite', icon: Heart, count: favoritesCount }
+    { id: 'favourite', label: 'Favourite', icon: Heart, count: favoritesCount },
+    { id: 'promote', label: 'Promote', icon: Megaphone }
   ];
 
   const handleNavClick = (tabId) => {
@@ -103,22 +117,26 @@ export default function Sidebar({
         </nav>
       </div>
 
-      {/* Bottom Section: Settings, Theme Toggle & Android Install */}
+      {/* Bottom Section: Settings, Theme Toggle & Direct Install */}
       <div className="border-t border-white/[0.06] pt-3 space-y-1">
-        {/* Install for Android button: only available on Android mobile devices, never on desktop */}
-        {isAndroid && onOpenInstallModal && (
+        {/* Direct Install App button: initiates native PWA installation directly without opening any modal */}
+        {onInstallDirect && (
           <button
             type="button"
             onClick={() => {
-              onOpenInstallModal();
+              onInstallDirect();
               if (typeof window !== 'undefined' && window.innerWidth < 768) {
                 onClose?.();
               }
             }}
-            className="md:hidden w-full h-8 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-all text-left cursor-pointer bg-[#0071e3]/20 hover:bg-[#0071e3]/30 text-blue-300 border border-blue-500/30 mb-1"
+            className="w-full h-8 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-all text-left cursor-pointer bg-[#0071e3]/15 hover:bg-[#0071e3]/25 text-[#0071e3] dark:text-blue-300 border border-[#0071e3]/30 mb-1"
           >
-            <Download size={14} className="text-blue-400" />
-            <span>Install for Android</span>
+            {isInstalled ? (
+              <Check size={14} className="text-[#0071e3] dark:text-blue-400" />
+            ) : (
+              <Download size={14} className="text-[#0071e3] dark:text-blue-400" />
+            )}
+            <span>{isInstalled ? 'Installed' : 'Install App'}</span>
           </button>
         )}
 

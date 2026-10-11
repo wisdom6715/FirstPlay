@@ -57,11 +57,11 @@ async function uploadToPromotionsFolder(file, prefix) {
 }
 
 export default function PromoteView({
+  currentTheme,
   onNavigateDiscover,
   onOpenPrivacyPolicy,
   onOpenTerms,
-  onNavigateTab,
-  onOpenInstallModal
+  onNavigateTab
 }) {
   const [category, setCategory] = useState('game'); // 'game' | 'app' | 'product'
   const [studioName, setStudioName] = useState('');
@@ -69,6 +69,7 @@ export default function PromoteView({
   const [tagline, setTagline] = useState('');
   const [url, setUrl] = useState('');
   const [description, setDescription] = useState('');
+  const [openInApp, setOpenInApp] = useState(true); // true = play in app, false = open in new tab
 
   // Icon / Logo State
   const [iconMode, setIconMode] = useState('upload'); // 'upload' | 'url'
@@ -135,6 +136,7 @@ export default function PromoteView({
     setBannerPreview('');
     setBannerUrl('');
     setPendingRef('');
+    setOpenInApp(true);
     setErrorMessage(null);
     setCheckMessage(null);
   };
@@ -183,8 +185,9 @@ export default function PromoteView({
             flyer: finalBannerUrl || null,
             banner_url: finalBannerUrl || null,
             payment_status: 'free',
+            open_in_app: Boolean(openInApp),
             created_at: serverTimestamp(),
-            expiry_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+            expiry_date: null
           });
 
           if (finalBannerUrl) {
@@ -196,6 +199,7 @@ export default function PromoteView({
               target_url: url.trim(),
               placement: 'all',
               active: true,
+              open_in_app: Boolean(openInApp),
               created_at: serverTimestamp()
             });
           }
@@ -218,6 +222,7 @@ export default function PromoteView({
             description: description.trim(),
             icon: finalIconUrl || null,
             banner: finalBannerUrl || null,
+            open_in_app: Boolean(openInApp),
             paymentStatus: 'pending',
             paymentLinkId: category === 'app' ? 'pl_fb788898fc46' : 'pl_051e5550c4f6',
             amount: category === 'app' ? 10000 : 5000,
@@ -272,7 +277,7 @@ export default function PromoteView({
         <button
           type="button"
           onClick={onNavigateDiscover}
-          className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/[0.08] hover:bg-white/[0.15] text-xs font-semibold text-zinc-300 hover:text-white transition-all cursor-pointer border border-white/10"
+          className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-200/80 hover:bg-zinc-300/80 dark:bg-white/[0.08] dark:hover:bg-white/[0.15] text-xs font-semibold text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white transition-all cursor-pointer border border-black/5 dark:border-white/10"
         >
           <ArrowLeft size={13} />
           <span>Back to Discovery</span>
@@ -286,52 +291,52 @@ export default function PromoteView({
 
       {/* Hero Header Block */}
       <div className="space-y-2">
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-zinc-900 dark:text-white">
           Promote Your Game, App, or Product
         </h1>
-        <p className="max-w-2xl text-xs sm:text-sm text-zinc-400 leading-relaxed">
-          Feature your web game, browser application, or digital product to thousands of active FirstPlay players and tech early adopters. Images are stored securely in Cloud Firebase Storage under the <code className="rounded bg-white/10 px-1 py-0.5 text-blue-400 font-bold">promotions</code> folder.
+        <p className="max-w-2xl text-xs sm:text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">
+          Publish browser games 100% free, or feature your web application and digital product to thousands of active FirstPlay players and tech early adopters. Images are stored securely in Cloud Firebase Storage under the <code className="rounded bg-blue-500/10 dark:bg-white/10 px-1 py-0.5 text-blue-600 dark:text-blue-400 font-bold border border-blue-400/20 dark:border-white/15">promotions</code> folder.
         </p>
       </div>
 
       {submissionState === 'awaiting_payment' ? (
         /* ================= Awaiting Bachs Payment ================= */
-        <div className="rounded-3xl border border-blue-400/30 bg-[#16161d] p-6 sm:p-12 text-center max-w-2xl mx-auto shadow-2xl space-y-4">
-          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-blue-500/15 text-blue-400 mb-2">
+        <div className="rounded-3xl border border-blue-400/30 bg-white dark:bg-[#16161d] p-6 sm:p-12 text-center max-w-2xl mx-auto shadow-2xl space-y-4 promote-card">
+          <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-blue-500/15 text-blue-500 dark:text-blue-400 mb-2">
             <CreditCard size={32} />
           </div>
 
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/30 bg-blue-500/10 px-3.5 py-1 text-xs font-bold text-blue-400">
+          <div className="inline-flex items-center gap-1.5 rounded-full border border-blue-400/30 bg-blue-500/10 px-3.5 py-1 text-xs font-bold text-blue-600 dark:text-blue-400">
             <Sparkles size={13} />
             <span>Draft Queued • Ref #{pendingRef}</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
             Complete Payment with Bachs
           </h2>
 
-          <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-lg mx-auto">
+          <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-lg mx-auto">
             Your campaign details and Firebase Storage images for <strong>{title}</strong> are saved. Complete payment on Bachs to automatically publish your listing.
           </p>
 
-          <div className="my-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:p-5 text-left max-w-md mx-auto space-y-2">
-            <div className="flex justify-between items-center py-1 border-b border-white/[0.08] text-xs">
-              <span className="text-zinc-400">Listing Name</span>
-              <span className="font-bold text-white">{title}</span>
+          <div className="my-6 rounded-2xl border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/[0.04] p-4 sm:p-5 text-left max-w-md mx-auto space-y-2">
+            <div className="flex justify-between items-center py-1 border-b border-zinc-200 dark:border-white/[0.08] text-xs">
+              <span className="text-zinc-500 dark:text-zinc-400">Listing Name</span>
+              <span className="font-bold text-zinc-900 dark:text-white">{title}</span>
             </div>
-            <div className="flex justify-between items-center py-1 border-b border-white/[0.08] text-xs">
-              <span className="text-zinc-400">Category</span>
-              <span className="font-bold text-white capitalize">
+            <div className="flex justify-between items-center py-1 border-b border-zinc-200 dark:border-white/[0.08] text-xs">
+              <span className="text-zinc-500 dark:text-zinc-400">Category</span>
+              <span className="font-bold text-zinc-900 dark:text-white capitalize">
                 {category === 'app' ? 'Web Application' : 'Digital Product'}
               </span>
             </div>
-            <div className="flex justify-between items-center py-1 border-b border-white/[0.08] text-xs">
-              <span className="text-zinc-400">Placement Period</span>
-              <span className="font-bold text-white">7 Days</span>
+            <div className="flex justify-between items-center py-1 border-b border-zinc-200 dark:border-white/[0.08] text-xs">
+              <span className="text-zinc-500 dark:text-zinc-400">Placement Period</span>
+              <span className="font-bold text-zinc-900 dark:text-white">7 Days</span>
             </div>
             <div className="flex justify-between items-center pt-2 text-sm font-bold">
-              <span className="text-white">Amount Due</span>
-              <span className="text-[#0a84ff] text-base">
+              <span className="text-zinc-900 dark:text-white">Amount Due</span>
+              <span className="text-[#0071e3] text-base">
                 {category === 'app' ? '₦10,000' : '₦5,000'}
               </span>
             </div>
@@ -342,9 +347,10 @@ export default function PromoteView({
               href={paymentUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0a84ff] hover:bg-[#0070e0] py-3 px-6 text-xs sm:text-sm font-bold text-white shadow-lg transition-all cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#0071e3] hover:bg-[#0077ed] py-3 px-6 text-xs sm:text-sm font-bold text-white shadow-lg transition-all cursor-pointer"
+              data-keep-white="true"
             >
-              <span>Pay with Bachs Checkout</span>
+              <span className="text-white">Pay with Bachs Checkout</span>
               <ExternalLink size={14} />
             </a>
 
@@ -352,46 +358,47 @@ export default function PromoteView({
               type="button"
               onClick={checkPaymentStatus}
               disabled={checkingPayment}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 py-2.5 px-6 text-xs font-semibold text-zinc-200 transition-all cursor-pointer"
+              className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-zinc-200 dark:border-white/15 bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/10 py-2.5 px-6 text-xs font-semibold text-zinc-700 dark:text-zinc-200 transition-all cursor-pointer"
             >
-              <RefreshCw size={13} className={checkingPayment ? 'animate-spin text-blue-400' : ''} />
+              <RefreshCw size={13} className={checkingPayment ? 'animate-spin text-blue-500' : ''} />
               <span>{checkingPayment ? 'Checking Bachs Webhook...' : 'I Have Paid — Verify Confirmation'}</span>
             </button>
           </div>
 
           {checkMessage && (
-            <p className="text-xs text-amber-300 bg-amber-500/15 border border-amber-500/25 rounded-xl p-3 max-w-md mx-auto">
+            <p className="text-xs text-amber-700 dark:text-amber-300 bg-amber-500/15 border border-amber-500/25 rounded-xl p-3 max-w-md mx-auto">
               {checkMessage}
             </p>
           )}
 
           <div className="pt-4 text-[11px] text-zinc-500">
             <span>Automated webhook verification active at: </span>
-            <code className="text-zinc-400 bg-white/5 px-1.5 py-0.5 rounded">/api/bachs/payment</code>
+            <code className="text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-white/5 px-1.5 py-0.5 rounded border border-zinc-200 dark:border-white/10">/api/bachs/payment</code>
           </div>
         </div>
       ) : submissionState === 'free_success' ? (
         /* ================= Free Game Success ================= */
-        <div className="rounded-3xl border border-emerald-500/30 bg-[#16161d] p-8 sm:p-14 text-center max-w-2xl mx-auto shadow-2xl space-y-4">
-          <CheckCircle2 size={54} className="mx-auto text-emerald-400" />
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            Game Listed Successfully!
+        <div className="rounded-3xl border border-emerald-500/30 bg-white dark:bg-[#16161d] p-8 sm:p-14 text-center max-w-2xl mx-auto shadow-2xl space-y-4 promote-card">
+          <CheckCircle2 size={54} className="mx-auto text-emerald-500 dark:text-emerald-400" />
+          <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
+            Game Published Successfully!
           </h2>
-          <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-lg mx-auto">
-            Your game <strong>{title}</strong> and Firebase Storage images are now submitted into the FirstPlay catalog with your 7-day free placement active.
+          <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-lg mx-auto">
+            Your game <strong>{title}</strong> and Firebase Storage images are now live in the FirstPlay catalog. Game publishing is 100% free!
           </p>
           <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
               onClick={onNavigateDiscover}
-              className="px-6 py-2.5 rounded-full bg-[#0a84ff] hover:bg-[#0070e0] text-xs font-bold text-white shadow-lg transition-all cursor-pointer"
+              className="px-6 py-2.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-xs font-bold text-white shadow-lg transition-all cursor-pointer"
+              data-keep-white="true"
             >
-              Return to Discovery
+              <span className="text-white">Return to Discovery</span>
             </button>
             <button
               type="button"
               onClick={resetForm}
-              className="px-5 py-2.5 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer"
+              className="px-5 py-2.5 rounded-full border border-zinc-200 dark:border-white/15 bg-zinc-100 hover:bg-zinc-200 dark:bg-white/5 dark:hover:bg-white/10 text-xs font-semibold text-zinc-700 dark:text-zinc-200 transition-all cursor-pointer"
             >
               Submit Another Game
             </button>
@@ -402,8 +409,8 @@ export default function PromoteView({
         <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_0.95fr] gap-8 items-start">
           
           {/* Left Column: Campaign Information Form */}
-          <div className="rounded-3xl border border-white/15 bg-[#16161d]/90 p-5 sm:p-8 shadow-2xl space-y-6">
-            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+          <div className="rounded-3xl border border-black/10 dark:border-white/15 bg-white dark:bg-[#16161d]/90 p-5 sm:p-8 shadow-xl dark:shadow-2xl space-y-6 promote-card">
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white">
               Campaign Information
             </h2>
 
@@ -411,29 +418,31 @@ export default function PromoteView({
               
               {/* TARGET CATEGORY */}
               <div>
-                <label className="block text-xs font-bold text-zinc-400 mb-2 uppercase tracking-wider">
+                <label className="block text-xs font-bold text-zinc-600 dark:text-zinc-400 mb-2 uppercase tracking-wider">
                   Target Category
                 </label>
-                <div className="grid grid-cols-3 gap-2 rounded-2xl bg-white/[0.04] p-1.5 border border-white/10">
+                <div className="grid grid-cols-3 gap-2 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] p-1.5 border border-zinc-200 dark:border-white/10 category-track">
                   <button
                     type="button"
                     onClick={() => setCategory('game')}
                     className={`rounded-xl py-2.5 text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
                       category === 'game'
-                        ? 'bg-[#0a84ff] text-white shadow-md'
-                        : 'text-zinc-400 hover:text-white'
+                        ? 'bg-[#0071e3] text-white shadow-md active-category'
+                        : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                     }`}
+                    data-keep-white={category === 'game' ? "true" : undefined}
                   >
-                    Game (7d FREE)
+                    Game (FREE)
                   </button>
                   <button
                     type="button"
                     onClick={() => setCategory('app')}
                     className={`rounded-xl py-2.5 text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
                       category === 'app'
-                        ? 'bg-[#0a84ff] text-white shadow-md'
-                        : 'text-zinc-400 hover:text-white'
+                        ? 'bg-[#0071e3] text-white shadow-md active-category'
+                        : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                     }`}
+                    data-keep-white={category === 'app' ? "true" : undefined}
                   >
                     Web App (₦10k)
                   </button>
@@ -442,9 +451,10 @@ export default function PromoteView({
                     onClick={() => setCategory('product')}
                     className={`rounded-xl py-2.5 text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
                       category === 'product'
-                        ? 'bg-[#0a84ff] text-white shadow-md'
-                        : 'text-zinc-400 hover:text-white'
+                        ? 'bg-[#0071e3] text-white shadow-md active-category'
+                        : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
                     }`}
+                    data-keep-white={category === 'product' ? "true" : undefined}
                   >
                     Product (₦5k)
                   </button>
@@ -453,7 +463,7 @@ export default function PromoteView({
 
               {/* Advertiser or Studio Name */}
               <div>
-                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 mb-1.5">
                   Advertiser or Studio Name
                 </label>
                 <input
@@ -461,13 +471,13 @@ export default function PromoteView({
                   value={studioName}
                   onChange={(e) => setStudioName(e.target.value)}
                   placeholder="e.g. Lagos Interactive or Paystack Studio"
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                  className="w-full rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
                 />
               </div>
 
               {/* Title */}
               <div>
-                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 mb-1.5">
                   {category === 'game' ? 'Game Title *' : category === 'app' ? 'Application Name *' : 'Product Title *'}
                 </label>
                 <input
@@ -476,13 +486,13 @@ export default function PromoteView({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Lagos Run"
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                  className="w-full rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
                 />
               </div>
 
               {/* Short Editorial Tagline */}
               <div>
-                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 mb-1.5">
                   Short Editorial Tagline
                 </label>
                 <input
@@ -490,13 +500,13 @@ export default function PromoteView({
                   value={tagline}
                   onChange={(e) => setTagline(e.target.value)}
                   placeholder="Catchy, high-impact headline for the showcase card."
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                  className="w-full rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
                 />
               </div>
 
               {/* Destination URL */}
               <div>
-                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 mb-1.5">
                   Destination URL (HTTPS) *
                 </label>
                 <input
@@ -505,13 +515,57 @@ export default function PromoteView({
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://example.com"
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                  className="w-full rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
                 />
+              </div>
+
+              {/* Launch Behavior: Open in App vs New Tab */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 mb-1.5">
+                  Launch Experience (Open in App or New Tab)
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setOpenInApp(true)}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      openInApp
+                        ? 'bg-blue-50/90 dark:bg-[#0a84ff]/20 border-[#0071e3] text-zinc-900 dark:text-white shadow-sm'
+                        : 'bg-zinc-50 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-900 dark:text-white">Play Inside App (open_in_app: true)</span>
+                      {openInApp && <CheckCircle2 size={14} className="text-[#0071e3]" />}
+                    </div>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                      Loads inside FirstPlay built-in player with sandboxed controls.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setOpenInApp(false)}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      !openInApp
+                        ? 'bg-blue-50/90 dark:bg-[#0a84ff]/20 border-[#0071e3] text-zinc-900 dark:text-white shadow-sm'
+                        : 'bg-zinc-50 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-900 dark:text-white">Open in New Tab (open_in_app: false)</span>
+                      {!openInApp && <CheckCircle2 size={14} className="text-[#0071e3]" />}
+                    </div>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                      Redirects directly to the website in a new browser tab.
+                    </p>
+                  </button>
+                </div>
               </div>
 
               {/* Description */}
               <div>
-                <label className="block text-xs font-bold text-zinc-200 mb-1.5">
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 mb-1.5">
                   Description *
                 </label>
                 <textarea
@@ -520,21 +574,21 @@ export default function PromoteView({
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Detailed breakdown of features and experience. Be specific and grounded."
-                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition resize-none"
+                  className="w-full rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition resize-none shadow-xs"
                 />
               </div>
 
               {/* Project Icon / Logo */}
               <div className="pt-1">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-200">
-                    <FileImage size={14} className="text-blue-400" />
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200">
+                    <FileImage size={14} className="text-[#0071e3]" />
                     <span>Project Icon / Logo *</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setIconMode(iconMode === 'upload' ? 'url' : 'upload')}
-                    className="text-xs font-semibold text-[#0a84ff] hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-semibold text-[#0071e3] hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <LinkIcon size={11} />
                     <span>{iconMode === 'upload' ? 'Use image URL' : 'Upload file'}</span>
@@ -542,7 +596,7 @@ export default function PromoteView({
                 </div>
 
                 {iconMode === 'upload' ? (
-                  <label className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition">
+                  <label className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-white/15 bg-zinc-50 dark:bg-white/[0.02] hover:bg-zinc-100 dark:hover:bg-white/[0.05] cursor-pointer transition">
                     <input
                       type="file"
                       accept="image/*"
@@ -550,19 +604,19 @@ export default function PromoteView({
                       className="hidden"
                     />
                     <div className="flex items-center gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/15 text-blue-400">
+                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-blue-500/15 text-blue-600 dark:text-blue-400">
                         <Upload size={18} />
                       </div>
                       <div className="text-left">
-                        <span className="block text-xs font-bold text-white">
+                        <span className="block text-xs font-bold text-zinc-900 dark:text-white">
                           {iconFile
                             ? `${iconFile.name} (Ready for Firebase Storage)`
                             : iconPreview
                             ? 'Logo Attached (Click to change)'
                             : 'Upload Logo Artwork'}
                         </span>
-                        <span className="block text-[11px] text-zinc-400">
-                          Uploads directly to <strong className="text-blue-400">promotions</strong> folder in Firebase Storage
+                        <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
+                          Uploads directly to <strong className="text-[#0071e3]">promotions</strong> folder in Firebase Storage
                         </span>
                       </div>
                     </div>
@@ -573,7 +627,7 @@ export default function PromoteView({
                     value={iconUrl}
                     onChange={(e) => setIconUrl(e.target.value)}
                     placeholder="https://example.com/logo.png"
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                    className="w-full rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
                   />
                 )}
               </div>
@@ -581,14 +635,14 @@ export default function PromoteView({
               {/* Showcase Banner / Cover Art */}
               <div className="pt-1">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-200">
-                    <ImageIcon size={14} className="text-purple-400" />
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-zinc-700 dark:text-zinc-200">
+                    <ImageIcon size={14} className="text-purple-600 dark:text-purple-400" />
                     <span>Showcase Banner / Cover Art *</span>
                   </label>
                   <button
                     type="button"
                     onClick={() => setBannerMode(bannerMode === 'upload' ? 'url' : 'upload')}
-                    className="text-xs font-semibold text-[#0a84ff] hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-semibold text-[#0071e3] hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <LinkIcon size={11} />
                     <span>{bannerMode === 'upload' ? 'Use image URL' : 'Upload file'}</span>
@@ -596,7 +650,7 @@ export default function PromoteView({
                 </div>
 
                 {bannerMode === 'upload' ? (
-                  <label className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 border-dashed border-white/15 bg-white/[0.02] hover:bg-white/[0.05] cursor-pointer transition">
+                  <label className="flex flex-col items-center justify-center p-4 sm:p-5 rounded-2xl border-2 border-dashed border-zinc-300 dark:border-white/15 bg-zinc-50 dark:bg-white/[0.02] hover:bg-zinc-100 dark:hover:bg-white/[0.05] cursor-pointer transition">
                     <input
                       type="file"
                       accept="image/*"
@@ -604,19 +658,19 @@ export default function PromoteView({
                       className="hidden"
                     />
                     <div className="flex items-center gap-3">
-                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-500/15 text-purple-400">
+                      <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-500/15 text-purple-600 dark:text-purple-400">
                         <Upload size={18} />
                       </div>
                       <div className="text-left">
-                        <span className="block text-xs font-bold text-white">
+                        <span className="block text-xs font-bold text-zinc-900 dark:text-white">
                           {bannerFile
                             ? `${bannerFile.name} (Ready for Firebase Storage)`
                             : bannerPreview
                             ? 'Banner Attached (Click to change)'
                             : 'Upload Showcase Artwork'}
                         </span>
-                        <span className="block text-[11px] text-zinc-400">
-                          Uploads directly to <strong className="text-purple-400">promotions</strong> folder in Firebase Storage
+                        <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">
+                          Uploads directly to <strong className="text-purple-600 dark:text-purple-400">promotions</strong> folder in Firebase Storage
                         </span>
                       </div>
                     </div>
@@ -627,15 +681,15 @@ export default function PromoteView({
                     value={bannerUrl}
                     onChange={(e) => setBannerUrl(e.target.value)}
                     placeholder="https://example.com/banner.jpg"
-                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-white outline-none placeholder:text-zinc-500 focus:bg-white/[0.08] focus:border-[#0a84ff] transition"
+                    className="w-full rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
                   />
                 )}
               </div>
 
               {/* Error Notice */}
               {errorMessage && (
-                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-300 flex items-start gap-2.5">
-                  <AlertCircle size={16} className="shrink-0 text-rose-400 mt-0.5" />
+                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-600 dark:text-rose-300 flex items-start gap-2.5">
+                  <AlertCircle size={16} className="shrink-0 text-rose-500 dark:text-rose-400 mt-0.5" />
                   <p className="leading-relaxed">{errorMessage}</p>
                 </div>
               )}
@@ -645,7 +699,8 @@ export default function PromoteView({
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-full bg-[#0a84ff] hover:bg-[#0070e0] py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-xl transition-all cursor-pointer active:scale-98 disabled:opacity-50"
+                  className="w-full rounded-full bg-[#0071e3] hover:bg-[#0077ed] py-3.5 text-xs sm:text-sm font-extrabold text-white shadow-xl transition-all cursor-pointer active:scale-98 disabled:opacity-50"
+                  data-keep-white="true"
                 >
                   {loading ? (
                     <span className="inline-flex items-center gap-2">
@@ -653,7 +708,7 @@ export default function PromoteView({
                       <span>{loadingStep || 'Processing submission...'}</span>
                     </span>
                   ) : category === 'game' ? (
-                    'Publish Game (7 Days Free) ›'
+                    'Publish Game (Free) ›'
                   ) : (
                     `Continue to Bachs Checkout (${category === 'app' ? '₦10,000' : '₦5,000'}) ›`
                   )}
@@ -667,52 +722,52 @@ export default function PromoteView({
           <div className="space-y-6">
             
             {/* Live Card Preview Box */}
-            <div className="rounded-3xl border border-white/15 bg-[#16161d]/90 p-5 sm:p-7 shadow-2xl space-y-4">
+            <div className="rounded-3xl border border-black/10 dark:border-white/15 bg-white dark:bg-[#16161d]/90 p-5 sm:p-7 shadow-xl dark:shadow-2xl space-y-4 promote-card">
               <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-xs font-extrabold text-white">
-                  <Eye size={14} className="text-blue-400" />
+                <span className="flex items-center gap-2 text-xs font-extrabold text-zinc-900 dark:text-white">
+                  <Eye size={14} className="text-[#0071e3] dark:text-blue-400" />
                   <span>Live Card Preview</span>
                 </span>
-                <span className="text-[11px] font-semibold text-zinc-400">
+                <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
                   Discovery & Category Rail
                 </span>
               </div>
 
               {/* Rail Row Item Preview */}
-              <div className="flex items-center gap-3.5 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+              <div className="flex items-center gap-3.5 rounded-2xl border border-black/5 dark:border-white/10 bg-zinc-50 dark:bg-white/[0.04] p-3">
                 {effectiveIcon ? (
                   <img
                     src={effectiveIcon}
                     alt=""
-                    className="h-12 w-12 rounded-2xl object-cover border border-white/10"
+                    className="h-12 w-12 rounded-2xl object-cover border border-black/5 dark:border-white/10"
                   />
                 ) : (
-                  <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#0a84ff] text-white font-black text-sm shadow-md">
+                  <div data-keep-white="true" className="grid h-12 w-12 place-items-center rounded-2xl bg-[#0a84ff] text-white font-black text-sm shadow-md">
                     {title ? title.slice(0, 2).toUpperCase() : 'FP'}
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <b className="block truncate text-xs sm:text-sm font-bold text-white">
+                  <b className="block truncate text-xs sm:text-sm font-bold text-zinc-900 dark:text-white">
                     {title || 'Your Campaign Name'}
                   </b>
-                  <span className="block truncate text-[11px] text-zinc-400 mt-0.5">
+                  <span className="block truncate text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     {tagline || 'Editorial pitch preview...'}
                   </span>
                 </div>
-                <span className="rounded-full bg-[#0a84ff] px-3.5 py-1 text-xs font-bold text-white shadow-sm">
+                <span data-keep-white="true" className="rounded-full bg-[#0a84ff] px-3.5 py-1 text-xs font-bold text-white shadow-sm">
                   {category === 'product' ? 'View' : category === 'app' ? 'Open' : 'Play'}
                 </span>
               </div>
 
               {/* Showcase Banner Card Preview */}
-              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-white/15 bg-black shadow-lg">
+              <div className="relative aspect-[16/9] w-full overflow-hidden rounded-2xl border border-black/10 dark:border-white/15 bg-black shadow-lg">
                 <img
                   src={effectiveBanner}
                   alt=""
                   className="h-full w-full object-cover brightness-[0.85]"
                 />
                 <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
-                <div className="absolute bottom-3.5 left-4 text-white space-y-0.5">
+                <div data-keep-white="true" className="absolute bottom-3.5 left-4 text-white space-y-0.5">
                   <span className="block text-[10px] font-black uppercase tracking-wider text-white/70">
                     {category === 'game'
                       ? 'GAME SHOWCASE'
@@ -720,7 +775,7 @@ export default function PromoteView({
                       ? 'WEB APP SHOWCASE'
                       : 'PRODUCT SHOWCASE'}
                   </span>
-                  <h3 className="text-base sm:text-lg font-black tracking-tight drop-shadow">
+                  <h3 className="text-base sm:text-lg font-black tracking-tight drop-shadow text-white">
                     {title || 'Campaign Title'}
                   </h3>
                 </div>
@@ -728,31 +783,31 @@ export default function PromoteView({
             </div>
 
             {/* Placement Rates Card */}
-            <div className="rounded-3xl border border-white/15 bg-[#16161d]/90 p-5 sm:p-7 shadow-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-                <h3 className="text-xs sm:text-sm font-extrabold text-white">Placement Rates</h3>
-                <span className="text-xs text-zinc-400 font-mono">7-Day Period</span>
+            <div className="rounded-3xl border border-black/10 dark:border-white/15 bg-white dark:bg-[#16161d]/90 p-5 sm:p-7 shadow-xl dark:shadow-2xl space-y-4 promote-card">
+              <div className="flex items-center justify-between border-b border-black/5 dark:border-white/[0.08] pb-3">
+                <h3 className="text-xs sm:text-sm font-extrabold text-zinc-900 dark:text-white">Placement Rates</h3>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">Campaign Rates</span>
               </div>
 
               <div className="space-y-2.5 text-xs">
-                <div className="flex items-center justify-between rounded-xl bg-white/[0.04] border border-white/10 p-3">
-                  <span className="font-semibold text-zinc-200">Browser Games:</span>
-                  <span className="font-extrabold text-emerald-400">7 Days FREE</span>
+                <div className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 p-3">
+                  <span className="font-semibold text-zinc-700 dark:text-zinc-200">Browser Games:</span>
+                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400">100% FREE</span>
                 </div>
-                <div className="flex items-center justify-between rounded-xl bg-white/[0.04] border border-white/10 p-3">
-                  <span className="font-semibold text-zinc-200">Web Applications:</span>
-                  <span className="font-extrabold text-blue-400">₦10,000 / 7 Days</span>
+                <div className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 p-3">
+                  <span className="font-semibold text-zinc-700 dark:text-zinc-200">Web Applications:</span>
+                  <span className="font-extrabold text-blue-600 dark:text-blue-400">₦10,000 / 7 Days</span>
                 </div>
-                <div className="flex items-center justify-between rounded-xl bg-white/[0.04] border border-white/10 p-3">
-                  <span className="font-semibold text-zinc-200">Digital Products:</span>
-                  <span className="font-extrabold text-purple-400">₦5,000 / 7 Days</span>
+                <div className="flex items-center justify-between rounded-xl bg-zinc-50 dark:bg-white/[0.04] border border-black/5 dark:border-white/10 p-3">
+                  <span className="font-semibold text-zinc-700 dark:text-zinc-200">Digital Products:</span>
+                  <span className="font-extrabold text-purple-600 dark:text-purple-400">₦5,000 / 7 Days</span>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2.5 text-[11px] text-zinc-400 pt-3 border-t border-white/[0.08]">
-                <ShieldCheck size={15} className="text-blue-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2.5 text-[11px] text-zinc-500 dark:text-zinc-400 pt-3 border-t border-black/5 dark:border-white/[0.08]">
+                <ShieldCheck size={15} className="text-[#0071e3] dark:text-blue-400 shrink-0 mt-0.5" />
                 <span>
-                  Images are stored in Firebase Storage bucket <code className="text-blue-300 font-bold">firstplay-7bd63.firebasestorage.app/promotions</code> and verified via Bachs Webhook <code className="text-zinc-300">/api/bachs/payment</code>.
+                  Images are stored in Firebase Storage bucket <code className="text-blue-600 dark:text-blue-300 font-bold">firstplay-7bd63.firebasestorage.app/promotions</code> and verified via Bachs Webhook <code className="text-zinc-700 dark:text-zinc-300">/api/bachs/payment</code>.
                 </span>
               </div>
             </div>
@@ -763,7 +818,7 @@ export default function PromoteView({
       )}
 
       {/* Operational Disclaimer Line matching screenshot */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-white/[0.08] text-[11px] text-zinc-500">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-6 border-t border-black/10 dark:border-white/[0.08] text-[11px] text-zinc-500 dark:text-zinc-400">
         <span>FirstPlay Advertiser & Promotion Operations • Cloud Firebase Backed</span>
         <span>All campaigns subject to verification before catalog dispatch</span>
       </div>
@@ -773,7 +828,6 @@ export default function PromoteView({
         onOpenPrivacyPolicy={onOpenPrivacyPolicy}
         onOpenTerms={onOpenTerms}
         onNavigateTab={onNavigateTab}
-        onOpenInstallModal={onOpenInstallModal}
       />
 
     </div>

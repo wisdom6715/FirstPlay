@@ -75,9 +75,11 @@ export default function AppRowItem({
           >
             {item.category === 'game' ? 'Play' : isFree ? 'Get' : `₦${item.price?.toLocaleString() || '10,000'}`}
           </button>
-          <span className="text-[9px] text-zinc-500 mt-0.5 tracking-tight font-medium">
-            {isLagos ? 'Opens in New Tab' : item.category === 'game' ? 'Free to Play' : 'In-App Web'}
-          </span>
+          {(isLagos || item.open_in_app === false) && (
+            <span className="text-[9px] text-zinc-500 mt-0.5 tracking-tight font-medium">
+              Opens in New Tab
+            </span>
+          )}
         </div>
       </div>
     </div>
