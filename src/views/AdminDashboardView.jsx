@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../services/firebaseConfig';
+import { auth, uploadPromotionAsset } from '../services/firebaseConfig';
 import { catalogService } from '../services/catalogService';
 import { 
   Shield, 
@@ -17,7 +17,12 @@ import {
   EyeOff,
   Gamepad2,
   Layers,
-  ArrowLeft
+  ArrowLeft,
+  Pencil,
+  Upload,
+  Image as ImageIcon,
+  FileText,
+  Globe
 } from 'lucide-react';
 import appLogo from '../assets/icon.png';
 
@@ -32,6 +37,29 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [toastMessage, setToastMessage] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(null);
+
+  // Edit Modal State
+  const [editingItem, setEditingItem] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    category: 'game',
+    creator: '',
+    url: '',
+    tagline: '',
+    description: '',
+    logo_url: '',
+    banner_url: '',
+    open_in_app: true,
+    active: true
+  });
+  const [logoFile, setLogoFile] = useState(null);
+  const [bannerFile, setBannerFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState('');
+  const [bannerPreview, setBannerPreview] = useState('');
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editSaveStep, setEditSaveStep] = useState('');
+  const [editError, setEditError] = useState(null);
 
   // Authentication Guard: Ensure user is signed in, authorized in Firestore, AND MFA verified
   useEffect(() => {
@@ -187,9 +215,133 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     }
   };
 
+  // Open Edit Modal for a game or submission
+  const handleOpenEditModal = (item, isUnderReview = false) => {
+    setEditingItem({ ...item, isUnderReview });
+    setEditForm({
+      name: item.name || item.title || '',
+      category: item.category || 'game',
+      creator: item.creator || item.full_name || '',
+      url: item.url || '',
+      tagline: item.tagline || '',
+      description: item.description || '',
+      logo_url: item.logo_url || item.logo || '',
+      banner_url: item.banner_url || item.flyer || item.banner || '',
+      open_in_app: item.open_in_app !== undefined ? Boolean(item.open_in_app) : true,
+      active: item.active !== undefined ? Boolean(item.active) : true
+    });
+    setLogoFile(null);
+    setBannerFile(null);
+    setLogoPreview(item.logo_url || item.logo || '');
+    setBannerPreview(item.banner_url || item.flyer || item.banner || '');
+    setEditError(null);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    if (isSavingEdit) return;
+    setIsEditModalOpen(false);
+    setEditingItem(null);
+    setLogoFile(null);
+    setBannerFile(null);
+    setLogoPreview('');
+    setBannerPreview('');
+    setEditError(null);
+  };
+
+  const handleLogoFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleBannerFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setBannerFile(file);
+    const reader = new FileReader();
+    reader.onload = () => setBannerPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  // Save changes to Firestore and upload new assets if selected
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setEditError(null);
+
+    if (!editForm.name.trim()) {
+      setEditError('Game/App name is required.');
+      return;
+    }
+    if (!editForm.url.trim()) {
+      setEditError('Launch URL is required.');
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      let finalLogoUrl = editForm.logo_url;
+      let finalBannerUrl = editForm.banner_url;
+
+      // 1. Upload new icon if selected
+      if (logoFile) {
+        setEditSaveStep('Optimizing & uploading new icon...');
+        finalLogoUrl = await uploadPromotionAsset(logoFile, 'logos');
+      }
+
+      // 2. Upload new banner if selected
+      if (bannerFile) {
+        setEditSaveStep('Optimizing & uploading new banner...');
+        finalBannerUrl = await uploadPromotionAsset(bannerFile, 'banners');
+      }
+
+      setEditSaveStep('Saving updates to Firebase...');
+      const payload = {
+        ...editForm,
+        name: editForm.name.trim(),
+        title: editForm.name.trim(),
+        url: editForm.url.trim(),
+        creator: editForm.creator.trim(),
+        tagline: editForm.tagline.trim(),
+        description: editForm.description.trim(),
+        logo_url: finalLogoUrl,
+        banner_url: finalBannerUrl
+      };
+
+      if (editingItem.isUnderReview) {
+        await catalogService.updateUnderReviewDetails(editingItem.id, payload);
+        setUnderReviewList((prev) =>
+          prev.map((item) => (item.id === editingItem.id ? { ...item, ...payload } : item))
+        );
+        showToast(`Updated "${payload.name}" submission details!`);
+      } else {
+        await catalogService.updateGameDetails(editingItem.id, payload);
+        setAllGamesList((prev) =>
+          prev.map((item) =>
+            item.id === editingItem.id ? { ...item, ...payload, active: payload.active } : item
+          )
+        );
+        showToast(`Updated "${payload.name}" details! Live changes synced.`);
+      }
+
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+    } catch (err) {
+      console.error('[Admin] Error saving game edits:', err);
+      setEditError(err.message || 'Failed to save updates. Please try again.');
+    } finally {
+      setIsSavingEdit(false);
+      setEditSaveStep('');
+    }
+  };
+
   if (authChecking) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[#f5f5f7] text-zinc-900">
+      <div className="h-screen w-full flex items-center justify-center bg-[#f5f5f7] text-zinc-900">
         <div className="w-8 h-8 border-2 border-zinc-300 border-t-[#0071e3] rounded-full animate-spin" />
       </div>
     );
@@ -422,8 +574,18 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                     </div>
                   </div>
 
-                  {/* Approve / Reject Actions */}
-                  <div className="pt-2 border-t border-zinc-100 flex items-center justify-end gap-2.5">
+                  {/* Approve / Reject / Edit Actions */}
+                  <div className="pt-2 border-t border-zinc-100 flex items-center justify-end gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      disabled={actionInProgress === item.id}
+                      onClick={() => handleOpenEditModal(item, true)}
+                      className="px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <Pencil size={12} />
+                      <span>Edit Details</span>
+                    </button>
+
                     <button
                       type="button"
                       disabled={actionInProgress === item.id}
@@ -448,7 +610,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                       ) : (
                         <>
                           <Check size={14} className="stroke-[3]" />
-                          <span>Approve & Publish to Site</span>
+                          <span>Approve & Publish</span>
                         </>
                       )}
                     </button>
@@ -460,7 +622,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
         </section>
 
         {/* =========================================================================
-            SECTION 2: ALL GAMES ON FIREBASE WITH TOGGLE SWITCHES
+            SECTION 2: ALL GAMES ON FIREBASE WITH TOGGLE SWITCHES & EDIT
             ========================================================================= */}
         <section className="space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -533,7 +695,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                       </div>
 
                       {/* Right: Live Status & Toggle Switch & Actions */}
-                      <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-4 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-100">
+                      <div className="flex items-center justify-between sm:justify-end w-full sm:w-auto gap-3.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-zinc-100">
                         {/* Status Label */}
                         <div className="text-right">
                           <span
@@ -574,6 +736,17 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                           </button>
                         </div>
 
+                        {/* Edit Game Details Button */}
+                        <button
+                          type="button"
+                          disabled={isBusy}
+                          onClick={() => handleOpenEditModal(game)}
+                          title="Edit game details (name, studio, images, URL)"
+                          className="w-8 h-8 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-[#0071e3] hover:text-[#0077ed] flex items-center justify-center transition cursor-pointer disabled:opacity-50"
+                        >
+                          <Pencil size={13} />
+                        </button>
+
                         {/* External launch test */}
                         {game.url && (
                           <a
@@ -606,6 +779,348 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
           )}
         </section>
       </main>
+
+      {/* =========================================================================
+          EDIT GAME DETAILS MODAL
+          ========================================================================= */}
+      {isEditModalOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200 select-text"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSavingEdit) {
+              handleCloseEditModal();
+            }
+          }}
+        >
+          <div className="w-full max-w-2xl max-h-[92vh] flex flex-col bg-white rounded-3xl shadow-2xl border border-zinc-200/90 overflow-hidden animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-zinc-200/80 bg-zinc-50 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-blue-100 text-[#0071e3] border border-blue-200 shadow-xs">
+                  <Pencil size={18} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-black tracking-tight text-zinc-900">
+                      Edit Listing Details
+                    </h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-zinc-200 text-zinc-800">
+                      {editForm.category}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    Update publisher name, game title, URLs, or banner images.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                disabled={isSavingEdit}
+                onClick={handleCloseEditModal}
+                className="w-8 h-8 rounded-full bg-zinc-200 hover:bg-zinc-300 text-zinc-600 hover:text-zinc-900 flex items-center justify-center transition cursor-pointer disabled:opacity-50"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Modal Form Content */}
+            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-6 sm:p-7 space-y-6">
+              {/* Error Banner */}
+              {editError && (
+                <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-start gap-2.5">
+                  <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-600" />
+                  <span>{editError}</span>
+                </div>
+              )}
+
+              {/* Basic Fields Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-zinc-800">
+                    Game / App Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.name}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g. Lagos Life"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-300 text-xs sm:text-sm text-zinc-900 outline-none focus:bg-white focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/20 transition"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-zinc-800">
+                    Category *
+                  </label>
+                  <select
+                    value={editForm.category}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-300 text-xs sm:text-sm text-zinc-900 outline-none focus:bg-white focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/20 transition cursor-pointer"
+                  >
+                    <option value="game">Game (HTML5 Web Game)</option>
+                    <option value="app">Web Application</option>
+                    <option value="product">Digital Product</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-zinc-800">
+                    Studio / Publisher Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.creator}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, creator: e.target.value }))}
+                    placeholder="e.g. Kola Studios"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-300 text-xs sm:text-sm text-zinc-900 outline-none focus:bg-white focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/20 transition"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-zinc-800">
+                    Launch / Play URL *
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={editForm.url}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, url: e.target.value }))}
+                    placeholder="https://..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-300 text-xs sm:text-sm text-zinc-900 outline-none focus:bg-white focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/20 transition font-mono text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Tagline & Description */}
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-zinc-800">
+                    Catchy Tagline (One sentence)
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.tagline}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, tagline: e.target.value }))}
+                    placeholder="e.g. Fast-paced open world Lagos action in your browser."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-300 text-xs sm:text-sm text-zinc-900 outline-none focus:bg-white focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/20 transition"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-zinc-800">
+                    Detailed Description
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={editForm.description}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Full gameplay overview or product details..."
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-300 text-xs sm:text-sm text-zinc-900 outline-none focus:bg-white focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/20 transition resize-none leading-relaxed"
+                  />
+                </div>
+              </div>
+
+              {/* Media Asset Section */}
+              <div className="space-y-4 pt-2 border-t border-zinc-100">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-zinc-500">
+                  Game Images & Media Assets
+                </h4>
+
+                {/* 1. Square Logo / Icon */}
+                <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/90 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-800">Game Logo / Square Icon (512x512)</span>
+                    <span className="text-[11px] text-zinc-500">PNG, JPG, WebP</span>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={logoPreview || '/icon.png'}
+                      alt="Logo preview"
+                      className="w-16 h-16 rounded-2xl object-cover bg-white border border-zinc-300 shrink-0 shadow-xs"
+                    />
+
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <label className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-zinc-100 border border-zinc-300 text-xs font-bold text-zinc-800 transition cursor-pointer inline-flex items-center gap-1.5 shadow-2xs">
+                          <Upload size={13} />
+                          <span>Upload New Icon</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoFileChange}
+                            className="hidden"
+                          />
+                        </label>
+                        {logoFile && (
+                          <span className="text-xs text-emerald-600 font-semibold truncate">
+                            Selected: {logoFile.name}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Or direct URL fallback */}
+                      <input
+                        type="url"
+                        value={editForm.logo_url}
+                        onChange={(e) => {
+                          setEditForm(prev => ({ ...prev, logo_url: e.target.value }));
+                          setLogoPreview(e.target.value);
+                          setLogoFile(null);
+                        }}
+                        placeholder="Or paste image URL (https://...)"
+                        className="w-full px-3 py-1.5 rounded-lg bg-white border border-zinc-200 text-xs text-zinc-700 outline-none font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Landscape Banner / Flyer */}
+                <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/90 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-800">Landscape Hero Banner / Flyer (16:9)</span>
+                    <span className="text-[11px] text-zinc-500">Featured across banners</span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {bannerPreview && (
+                      <div className="w-full h-32 rounded-xl overflow-hidden border border-zinc-200 relative bg-zinc-200">
+                        <img
+                          src={bannerPreview}
+                          alt="Banner preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <label className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-zinc-100 border border-zinc-300 text-xs font-bold text-zinc-800 transition cursor-pointer inline-flex items-center gap-1.5 shadow-2xs">
+                        <Upload size={13} />
+                        <span>Upload New Banner</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBannerFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                      {bannerFile && (
+                        <span className="text-xs text-emerald-600 font-semibold truncate">
+                          Selected: {bannerFile.name}
+                        </span>
+                      )}
+                    </div>
+
+                    <input
+                      type="url"
+                      value={editForm.banner_url}
+                      onChange={(e) => {
+                        setEditForm(prev => ({ ...prev, banner_url: e.target.value }));
+                        setBannerPreview(e.target.value);
+                        setBannerFile(null);
+                      }}
+                      placeholder="Or paste banner image URL (https://...)"
+                      className="w-full px-3 py-1.5 rounded-lg bg-white border border-zinc-200 text-xs text-zinc-700 outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Behavior & Visibility Settings */}
+              <div className="space-y-3 pt-2 border-t border-zinc-100">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-zinc-500">
+                  Settings & Visibility
+                </h4>
+
+                <div className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50 border border-zinc-200">
+                  <div>
+                    <span className="text-xs font-bold text-zinc-900 block">
+                      Open in Sandboxed FirstPlay Player
+                    </span>
+                    <span className="text-[11px] text-zinc-500 block">
+                      Enables fullscreen in-app WebView launch instead of navigating away.
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={editForm.open_in_app}
+                    onChange={(e) => setEditForm(prev => ({ ...prev, open_in_app: e.target.checked }))}
+                    className="w-4 h-4 rounded text-[#0071e3] cursor-pointer"
+                  />
+                </div>
+
+                {!editingItem?.isUnderReview && (
+                  <div className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-50 border border-zinc-200">
+                    <div>
+                      <span className="text-xs font-bold text-zinc-900 block">
+                        Live on FirstPlay Site
+                      </span>
+                      <span className="text-[11px] text-zinc-500 block">
+                        When enabled, players can discover and play this experience.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editForm.active}
+                      onClick={() => setEditForm(prev => ({ ...prev, active: !prev.active }))}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
+                        editForm.active ? 'bg-emerald-500' : 'bg-zinc-300'
+                      }`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          editForm.active ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </form>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between shrink-0">
+              <span className="text-xs text-zinc-500 font-medium">
+                {isSavingEdit ? editSaveStep : 'All updates sync to Firebase Firestore.'}
+              </span>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  disabled={isSavingEdit}
+                  onClick={handleCloseEditModal}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 transition cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isSavingEdit}
+                  onClick={handleSaveEdit}
+                  className="px-5 py-2.5 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] active:scale-[0.99] text-white text-xs font-bold transition shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isSavingEdit ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>{editSaveStep || 'Saving...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={14} className="stroke-[3]" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Status Notification Toast */}
       {toastMessage && (
