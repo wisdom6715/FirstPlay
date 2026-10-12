@@ -1,5 +1,5 @@
 // FirstPlay Progressive Web App Service Worker
-const CACHE_NAME = 'firstplay-pwa-v2';
+const CACHE_NAME = 'firstplay-pwa-v3';
 const PRECACHE_ASSETS = [
   '/',
   '/index.html',
@@ -40,29 +40,44 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-
-  // Never intercept or cache localhost development requests
-  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+  // 1. Completely bypass service worker in local dev environments (localhost / 127.0.0.1)
+  if (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1') {
     return;
   }
 
-  // Only handle GET requests
+  // 2. Only handle GET requests
   if (event.request.method !== 'GET') return;
 
-  // For same-origin static requests, use Stale-While-Revalidate
+  const url = new URL(event.request.url);
+
+  // 3. Explicitly NEVER intercept Firestore, Auth, Analytics, or any streaming/API connections
+  if (
+    url.hostname.includes('firestore.googleapis.com') ||
+    url.hostname.includes('identitytoolkit.googleapis.com') ||
+    url.hostname.includes('securetoken.googleapis.com') ||
+    url.hostname.includes('google-analytics.com') ||
+    url.hostname.includes('analytics.google.com') ||
+    url.pathname.includes('/Listen/') ||
+    url.pathname.includes('channel')
+  ) {
+    return;
+  }
+
+  // 4. Same-origin static assets: Stale-While-Revalidate
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return networkResponse;
-        }).catch(() => cachedResponse);
+        const fetchPromise = fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+              const responseToCache = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseToCache).catch(() => {});
+              });
+            }
+            return networkResponse;
+          })
+          .catch(() => cachedResponse);
 
         return cachedResponse || fetchPromise;
       })
@@ -70,24 +85,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cross-origin assets (fonts, images, CDN dependencies): Cache first with network fallback
-  if (
-    url.hostname.includes('googleapis.com') ||
-    url.hostname.includes('gstatic.com') ||
-    url.hostname.includes('firebasestorage.googleapis.com')
-  ) {
+  // 5. Cross-origin static assets ONLY: Google Fonts & Firebase Storage images
+  const isGoogleFont = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
+  const isFirebaseImage = url.hostname === 'firebasestorage.googleapis.com' && 
+    (event.request.destination === 'image' || url.pathname.includes('/o/promotions') || url.pathname.includes('/FirstPlay/'));
+
+  if (isGoogleFont || isFirebaseImage) {
     event.respondWith(
       caches.match(event.request).then((cachedResponse) => {
         if (cachedResponse) return cachedResponse;
-        return fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return networkResponse;
-        }).catch(() => null);
+        return fetch(event.request)
+          .then((networkResponse) => {
+            if (networkResponse && networkResponse.status === 200) {
+              const responseToCache = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(event.request, responseToCache).catch(() => {});
+              });
+            }
+            return networkResponse;
+          })
+          .catch(() => {
+            // Never return null to respondWith!
+            return new Response('', { status: 408, statusText: 'Request Timeout' });
+          });
       })
     );
   }

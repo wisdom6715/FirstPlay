@@ -269,7 +269,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
 
   // Save changes to Firestore and upload new assets if selected
   const handleSaveEdit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!editingItem) return;
     setEditError(null);
 
@@ -825,7 +825,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
             </div>
 
             {/* Modal Form Content */}
-            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-6 sm:p-7 space-y-6">
+            <form id="edit-game-form" onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-6 sm:p-7 space-y-6">
               {/* Error Banner */}
               {editError && (
                 <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-start gap-2.5">
@@ -1099,9 +1099,9 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                 </button>
 
                 <button
-                  type="button"
+                  type="submit"
+                  form="edit-game-form"
                   disabled={isSavingEdit}
-                  onClick={handleSaveEdit}
                   className="px-5 py-2.5 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] active:scale-[0.99] text-white text-xs font-bold transition shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {isSavingEdit ? (

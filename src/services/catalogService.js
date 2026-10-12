@@ -611,6 +611,7 @@ export const catalogService = {
       app_url: category === 'app' ? submission.url : null,
       product_url: category === 'product' ? submission.url : null,
       url: submission.url,
+      creator: submission.creator || 'Independent Studio',
       full_name: submission.creator || 'Independent Studio',
       tagline: submission.tagline || '',
       description: submission.description || '',

@@ -17,7 +17,7 @@ import { isLagosLife, openGameInNewTab } from './utils/gameUtils';
 import { triggerPwaInstall, detectUserOS } from './utils/pwaUtils';
 import PwaDownloadNotification from './components/PwaDownloadNotification';
 import LegalModal from './components/LegalModal';
-import { Minimize2, X, Check, Download, Info } from 'lucide-react';
+import { Minimize2, X, Check, Download, Info, ExternalLink } from 'lucide-react';
 import { setTabSEO, setGameSEO, updateCatalogItemListSEO } from './services/seoService';
 import { slugify } from './sitemap';
 
@@ -48,6 +48,38 @@ export default function App() {
       return getTabFromPath(window.location.pathname);
     }
     return 'discover';
+  });
+  const [targetSection, setTargetSection] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState('All');
+  const [listings, setListings] = useState([]);
+  const [heroItem, setHeroItem] = useState(null);
+  const [heroBanners, setHeroBanners] = useState([]);
+  const [recentlyPlayed, setRecentlyPlayed] = useState([]);
+  const [favorites, setFavorites] = useState([]);
+  const [activePlayingItem, setActivePlayingItem] = useState(null);
+  const [externalLaunchItem, setExternalLaunchItem] = useState(null);
+  const [searchInitialQuery, setSearchInitialQuery] = useState('');
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768;
+    }
+    return true;
+  });
+  const [installToast, setInstallToast] = useState(null);
+  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
+  const [legalDocType, setLegalDocType] = useState('privacy');
+  const [theme, setTheme] = useState(() => {
+    const version = typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme_ver') : null;
+    if (version !== 'v2_light') {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('firstplay_theme_ver', 'v2_light');
+        localStorage.setItem('firstplay_theme', 'light');
+      }
+      return 'light';
+    }
+    return (typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme') : null) || 'light';
   });
 
   const navigateToTab = (tab, push = true) => {
@@ -80,38 +112,6 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, [activePlayingItem]);
-
-  const [targetSection, setTargetSection] = useState(null);
-  const [categoryFilter, setCategoryFilter] = useState('All');
-  const [listings, setListings] = useState([]);
-  const [heroItem, setHeroItem] = useState(null);
-  const [heroBanners, setHeroBanners] = useState([]);
-  const [recentlyPlayed, setRecentlyPlayed] = useState([]);
-  const [favorites, setFavorites] = useState([]);
-  const [activePlayingItem, setActivePlayingItem] = useState(null);
-  const [searchInitialQuery, setSearchInitialQuery] = useState('');
-  const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768;
-    }
-    return true;
-  });
-  const [installToast, setInstallToast] = useState(null);
-  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
-  const [legalDocType, setLegalDocType] = useState('privacy');
-  const [theme, setTheme] = useState(() => {
-    const version = typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme_ver') : null;
-    if (version !== 'v2_light') {
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('firstplay_theme_ver', 'v2_light');
-        localStorage.setItem('firstplay_theme', 'light');
-      }
-      return 'light';
-    }
-    return (typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme') : null) || 'light';
-  });
 
   // Synchronize and apply theme mode
   useEffect(() => {
@@ -199,7 +199,7 @@ export default function App() {
     const handleKeyDown = (e) => {
       if ((e.ctrlKey && e.key === 'k') || (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA')) {
         e.preventDefault();
-        setCurrentTab('search');
+        navigateToTab('search');
       } else if (e.key === 'Escape') {
         if (isFullscreen) {
           // Exit fullscreen if active, preserving the running experience
@@ -302,8 +302,13 @@ export default function App() {
           (rawSlug.includes('monkey') && g.name.toLowerCase().includes('monkey')) ||
           (rawSlug.includes('abuja') && g.name.toLowerCase().includes('abuja'))
         );
-        if (matched && (!activePlayingItem || activePlayingItem.id !== matched.id)) {
-          handlePlay(matched);
+        if (matched) {
+          if (isLagosLife(matched) || matched?.open_in_app === false) {
+            setGameSEO(matched);
+            setExternalLaunchItem(matched);
+          } else if (!activePlayingItem || activePlayingItem.id !== matched.id) {
+            handlePlay(matched);
+          }
         }
       }
     }
@@ -658,6 +663,60 @@ export default function App() {
           >
             <X size={14} />
           </button>
+        </div>
+      )}
+
+      {/* External Game Launch Dialog (Prevents browser popup blocker on direct deep links) */}
+      {externalLaunchItem && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => {
+            setExternalLaunchItem(null);
+            navigateToTab('discover', false);
+          }}
+        >
+          <div 
+            className="w-full max-w-sm bg-white dark:bg-[#1c1c1e] rounded-3xl p-6 sm:p-7 shadow-2xl border border-zinc-200 dark:border-white/10 text-center space-y-5 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={externalLaunchItem.logo_url || '/icon.png'}
+              alt={externalLaunchItem.name}
+              className="w-20 h-20 rounded-2xl mx-auto object-cover border border-zinc-200 dark:border-white/10 shadow-md"
+            />
+            <div className="space-y-1">
+              <h3 className="text-lg font-black text-zinc-900 dark:text-white tracking-tight">
+                {externalLaunchItem.name}
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto line-clamp-2">
+                {externalLaunchItem.tagline || externalLaunchItem.description}
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  openGameInNewTab(externalLaunchItem);
+                  setExternalLaunchItem(null);
+                  navigateToTab('discover', false);
+                }}
+                className="w-full py-3 px-4 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-bold shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer transition active:scale-[0.98]"
+              >
+                <span>Launch {externalLaunchItem.name}</span>
+                <ExternalLink size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setExternalLaunchItem(null);
+                  navigateToTab('discover', false);
+                }}
+                className="w-full py-2 px-3 rounded-xl text-xs font-semibold text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition cursor-pointer"
+              >
+                Back to FirstPlay
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

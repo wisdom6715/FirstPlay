@@ -3,7 +3,7 @@
  * Reactively updates Page Titles, OpenGraph, Twitter/X cards, and Schema.org JSON-LD structured data.
  */
 
-import { slugify, TOP_FEATURED_GAMES } from '../sitemap';
+import { slugify } from '../sitemap';
 
 export const SITE_URL = 'https://firstplay.app';
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/firstplay_x_cover.jpg`;
