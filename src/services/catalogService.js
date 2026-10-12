@@ -525,6 +525,75 @@ export const catalogService = {
     localStorage.removeItem(STORAGE_KEY_LISTINGS);
   },
 
+  // Update game/app/product details in Firestore 'apps' collection
+  async updateGameDetails(gameId, updatePayload, collectionName = 'apps') {
+    if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
+    const category = (updatePayload.category || 'game').toLowerCase();
+    const name = (updatePayload.name || '').trim();
+
+    const fieldsToUpdate = {
+      name,
+      game_name: category === 'game' ? name : (updatePayload.game_name || name),
+      app_name: category === 'app' ? name : (updatePayload.app_name || name),
+      product_name: category === 'product' ? name : (updatePayload.product_name || name),
+      category,
+      url: (updatePayload.url || '').trim(),
+      game_url: category === 'game' ? (updatePayload.url || '').trim() : (updatePayload.game_url || updatePayload.url || '').trim(),
+      app_url: category === 'app' ? (updatePayload.url || '').trim() : (updatePayload.app_url || updatePayload.url || '').trim(),
+      product_url: category === 'product' ? (updatePayload.url || '').trim() : (updatePayload.product_url || updatePayload.url || '').trim(),
+      creator: (updatePayload.creator || updatePayload.full_name || 'Independent Studio').trim(),
+      full_name: (updatePayload.creator || updatePayload.full_name || 'Independent Studio').trim(),
+      tagline: (updatePayload.tagline || '').trim(),
+      description: (updatePayload.description || '').trim(),
+      logo: updatePayload.logo_url || updatePayload.logo || null,
+      logo_url: updatePayload.logo_url || updatePayload.logo || null,
+      flyer: updatePayload.banner_url || updatePayload.flyer || null,
+      banner_url: updatePayload.banner_url || updatePayload.flyer || null,
+      banner: updatePayload.banner_url || updatePayload.flyer || null,
+      open_in_app: updatePayload.open_in_app !== undefined ? Boolean(updatePayload.open_in_app) : true,
+      updated_at: serverTimestamp()
+    };
+
+    if (updatePayload.active !== undefined) {
+      fieldsToUpdate.active = Boolean(updatePayload.active);
+      fieldsToUpdate.status = updatePayload.active ? 'active' : 'disabled';
+    }
+
+    const docRef = doc(db, collectionName, gameId);
+    await updateDoc(docRef, fieldsToUpdate);
+
+    // Invalidate local storage cache so site re-syncs immediately
+    localStorage.removeItem(STORAGE_KEY_LISTINGS);
+    localStorage.removeItem(STORAGE_KEY_BANNERS);
+
+    return fieldsToUpdate;
+  },
+
+  // Update an under_review submission details
+  async updateUnderReviewDetails(submissionId, updatePayload) {
+    if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
+    const docRef = doc(db, 'under_review', submissionId);
+    const title = (updatePayload.title || updatePayload.name || '').trim();
+    const fieldsToUpdate = {
+      title,
+      name: title,
+      category: updatePayload.category || 'game',
+      url: (updatePayload.url || '').trim(),
+      creator: (updatePayload.creator || 'Independent Studio').trim(),
+      full_name: (updatePayload.creator || 'Independent Studio').trim(),
+      tagline: (updatePayload.tagline || '').trim(),
+      description: (updatePayload.description || '').trim(),
+      logo_url: updatePayload.logo_url || null,
+      logo: updatePayload.logo_url || null,
+      banner_url: updatePayload.banner_url || null,
+      banner: updatePayload.banner_url || null,
+      open_in_app: Boolean(updatePayload.open_in_app),
+      updated_at: serverTimestamp()
+    };
+    await updateDoc(docRef, fieldsToUpdate);
+    return fieldsToUpdate;
+  },
+
   // Approve a submission from 'under_review' -> write to 'apps' and delete from 'under_review'
   async approveUnderReviewGame(submission) {
     if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
