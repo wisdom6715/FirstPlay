@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  <url>
+    <loc>https://firstplay.app/</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.00</priority>
+    <image:image>
+      <image:loc>https://firstplay.app/firstplay_x_cover.jpg</image:loc>
+      <image:title>FirstPlay African Web Games &amp; Digital Experiences</image:title>
+      <image:caption>Play top Nigerian and African browser games instantly with zero installation</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://firstplay.app/icon-512.png</image:loc>
+      <image:title>FirstPlay App Icon</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://firstplay.app/category</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.90</priority>
+  </url>
+  <url>
+    <loc>https://firstplay.app/search</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+  </url>
+  <url>
+    <loc>https://firstplay.app/promote</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.80</priority>
+    <image:image>
+      <image:loc>https://firstplay.app/firstplay_x_cover.jpg</image:loc>
+      <image:title>Submit and Promote Your Nigerian Web Game</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://firstplay.app/favourite</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.70</priority>
+  </url>
+  <url>
+    <loc>https://firstplay.app/settings</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.50</priority>
+  </url>
+  <url>
+    <loc>https://firstplay.app/game/lagos-life</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.98</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557086675_banner_ecf94e5fc0f6dd3569d4addfb4eac6bc2aed320d__1_.png?alt=media&amp;token=f2b81c7c-35e4-49ab-9a5b-b742cfdb95a0</image:loc>
+      <image:title>Lagos Life Game Banner</image:title>
+      <image:caption>Play Lagos Life - Naija Life Sim on FirstPlay</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557081393_logo_Minimalist_Crown_Icon.png?alt=media&amp;token=4bf19efe-c889-4a85-8ac9-6a9261cfdce4</image:loc>
+      <image:title>Lagos Life Logo</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://firstplay.app/game/danfo-run</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.95</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791550950504_banner_WhatsApp_Image_2026-10-08_at_3.47.45_PM.jpeg?alt=media&amp;token=d7f943ba-ac56-4f67-bb49-eefb1079f060</image:loc>
+      <image:title>Danfo Run Game Banner</image:title>
+      <image:caption>Play Danfo Run - Drive the Danfo on FirstPlay</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2FLagos%20Gaming%20Speed%20Logo.png?alt=media&amp;token=b457f1a1-e33a-4510-929e-9d4f79d2bd3b</image:loc>
+      <image:title>Danfo Run Logo</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://firstplay.app/game/monkey-post</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.92</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557086675_banner_ecf94e5fc0f6dd3569d4addfb4eac6bc2aed320d__1_.png?alt=media&amp;token=f2b81c7c-35e4-49ab-9a5b-b742cfdb95a0</image:loc>
+      <image:title>Monkey Post Game Banner</image:title>
+      <image:caption>Play Monkey Post - Naija Street Soccer on FirstPlay</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2FLagos%20Gaming%20Speed%20Logo.png?alt=media&amp;token=b457f1a1-e33a-4510-929e-9d4f79d2bd3b</image:loc>
+      <image:title>Monkey Post Logo</image:title>
+    </image:image>
+  </url>
+  <url>
+    <loc>https://firstplay.app/game/myabuja-life</loc>
+    <lastmod>2026-10-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791550950504_banner_WhatsApp_Image_2026-10-08_at_3.47.45_PM.jpeg?alt=media&amp;token=d7f943ba-ac56-4f67-bb49-eefb1079f060</image:loc>
+      <image:title>myAbuja Life Game Banner</image:title>
+      <image:caption>Play myAbuja Life - Capital City Simulator on FirstPlay</image:caption>
+    </image:image>
+    <image:image>
+      <image:loc>https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557081393_logo_Minimalist_Crown_Icon.png?alt=media&amp;token=4bf19efe-c889-4a85-8ac9-6a9261cfdce4</image:loc>
+      <image:title>myAbuja Life Logo</image:title>
+    </image:image>
+  </url>
+</urlset>

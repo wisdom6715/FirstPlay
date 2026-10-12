@@ -18,10 +18,13 @@ import { triggerPwaInstall, detectUserOS } from './utils/pwaUtils';
 import PwaDownloadNotification from './components/PwaDownloadNotification';
 import LegalModal from './components/LegalModal';
 import { Minimize2, X, Check, Download, Info } from 'lucide-react';
+import { setTabSEO, setGameSEO, updateCatalogItemListSEO } from './services/seoService';
+import { slugify } from './sitemap';
 
 // URL Route Synchronization Helpers
 function getTabFromPath(pathname) {
   const clean = (pathname || '').toLowerCase().replace(/^\/+|\/+$/g, '');
+  if (clean.startsWith('game/')) return 'discover';
   if (clean === 'admin/auth' || clean === 'admin/login') return 'admin-auth';
   if (clean === 'admin/dashboard' || clean === 'admin') return 'admin-dashboard';
   if (clean === 'promote') return 'promote';
@@ -64,12 +67,19 @@ export default function App() {
   // Synchronize browser back/forward buttons with active view
   useEffect(() => {
     const handlePopState = () => {
+      const path = window.location.pathname;
+      if (!path.startsWith('/game/')) {
+        if (activePlayingItem) {
+          preloadService.setActiveGame(null);
+          setActivePlayingItem(null);
+        }
+      }
       const tab = getTabFromPath(window.location.pathname);
       setCurrentTab(tab);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [activePlayingItem]);
 
   const [targetSection, setTargetSection] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -138,6 +148,7 @@ export default function App() {
       try {
         const items = await catalogService.getListings();
         setListings(items);
+        updateCatalogItemListSEO(items);
         const hero = await catalogService.getPromotedHero();
         setHeroItem(hero);
         const banners = await catalogService.getAllAdBanners();
@@ -160,6 +171,7 @@ export default function App() {
       try {
         const items = await catalogService.getListings();
         setListings(items);
+        updateCatalogItemListSEO(items);
         const hero = await catalogService.getPromotedHero();
         setHeroItem(hero);
         const banners = await catalogService.getAllAdBanners();
@@ -220,10 +232,26 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Synchronize Tab SEO Metadata
+  useEffect(() => {
+    if (!activePlayingItem) {
+      setTabSEO(currentTab, categoryFilter);
+    }
+  }, [currentTab, categoryFilter, activePlayingItem]);
 
   const handlePlay = (item) => {
     const updated = catalogService.recordPlay(item);
     setRecentlyPlayed(updated);
+
+    // Update dynamic SEO and URL for this game
+    setGameSEO(item);
+    if (typeof window !== 'undefined') {
+      const slug = slugify(item.name || item.id);
+      const targetUrl = `/game/${slug}`;
+      if (window.location.pathname !== targetUrl) {
+        window.history.pushState({ tab: currentTab, gameId: item.id }, '', targetUrl);
+      }
+    }
 
     // If Lagos Life OR configured with open_in_app: false, redirect / open in new tab
     if (isLagosLife(item) || item?.open_in_app === false) {
@@ -259,6 +287,27 @@ export default function App() {
       }
     }
   };
+
+  // Support direct URL deep linking to games (/game/:slug)
+  useEffect(() => {
+    if (listings.length > 0 && typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path.startsWith('/game/')) {
+        const rawSlug = path.replace(/^\/game\/?/i, '').trim().toLowerCase();
+        const matched = listings.find(g => 
+          slugify(g.name) === rawSlug || 
+          (g.id && g.id.toLowerCase() === rawSlug) ||
+          (rawSlug.includes('lagos') && g.name.toLowerCase().includes('lagos')) ||
+          (rawSlug.includes('danfo') && g.name.toLowerCase().includes('danfo')) ||
+          (rawSlug.includes('monkey') && g.name.toLowerCase().includes('monkey')) ||
+          (rawSlug.includes('abuja') && g.name.toLowerCase().includes('abuja'))
+        );
+        if (matched && (!activePlayingItem || activePlayingItem.id !== matched.id)) {
+          handlePlay(matched);
+        }
+      }
+    }
+  }, [listings]);
 
   const handleToggleFavorite = (item) => {
     const { favorites: updated } = catalogService.toggleFavorite(item);
@@ -557,6 +606,13 @@ export default function App() {
               }
               preloadService.setActiveGame(null);
               setActivePlayingItem(null);
+              setTabSEO(currentTab, categoryFilter);
+              if (typeof window !== 'undefined') {
+                const targetPath = getPathFromTab(currentTab);
+                if (window.location.pathname !== targetPath) {
+                  window.history.pushState({ tab: currentTab }, '', targetPath);
+                }
+              }
             }}
             isFullscreen={isFullscreen}
             onToggleFullscreen={(val) => {

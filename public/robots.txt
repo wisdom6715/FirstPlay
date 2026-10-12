@@ -1,0 +1,43 @@
+# FirstPlay Robots.txt Specification
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin/auth
+Disallow: /admin/dashboard
+
+# Social Media Link Preview Crawlers
+User-agent: Twitterbot
+Allow: /
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Instagram
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: TikTokBot
+Allow: /
+
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
+User-agent: TelegramBot
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Canonical Sitemap
+Sitemap: https://firstplay.app/sitemap.xml
