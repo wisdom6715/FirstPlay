@@ -243,14 +243,6 @@ export default function HeroBanner({
           </div>
         </div>
 
-        {/* Center/Top-Right Game Play Badge if game */}
-        {currentItem.category === 'game' && (
-          <div className="absolute right-14 top-8 hidden md:flex items-center justify-center pointer-events-none z-10">
-            <div className="w-12 h-12 rounded-full bg-black/45 backdrop-blur-xl border border-white/20 flex items-center justify-center text-white shadow-2xl group-hover:scale-110 transition-transform">
-              <Play size={18} fill="currentColor" className="ml-0.5" />
-            </div>
-          </div>
-        )}
 
         {/* Carousel Navigation: Left & Right Chevrons (Only if not static and multiple banners) */}
         {!isStatic && bannerList.length > 1 && (

@@ -185,6 +185,13 @@ export default function Footer({
             >
               Terms of Service
             </button>
+            <button
+              type="button"
+              onClick={() => onNavigateTab?.('admin-dashboard')}
+              className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+            >
+              Admin Portal
+            </button>
           </div>
         </div>
 

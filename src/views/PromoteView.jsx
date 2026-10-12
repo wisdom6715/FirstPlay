@@ -168,43 +168,32 @@ export default function PromoteView({
       setLoadingStep('Saving campaign listing...');
 
       if (category === 'game') {
-        // Free game submission -> direct write to Firestore apps
+        // Upload strictly to 'under_review' collection in Firebase
         if (db) {
-          await addDoc(collection(db, 'apps'), {
+          await addDoc(collection(db, 'under_review'), {
             category: 'game',
+            title: title.trim(),
+            name: title.trim(),
             game_name: title.trim(),
-            app_name: null,
-            product_name: null,
             game_url: url.trim(),
-            app_url: null,
-            product_url: null,
+            url: url.trim(),
             full_name: studioName.trim() || 'Independent Studio',
+            studioName: studioName.trim() || 'Independent Studio',
             tagline: tagline.trim(),
             description: description.trim(),
             logo: finalIconUrl || null,
+            logo_url: finalIconUrl || null,
             flyer: finalBannerUrl || null,
+            banner: finalBannerUrl || null,
             banner_url: finalBannerUrl || null,
             payment_status: 'free',
             open_in_app: Boolean(openInApp),
-            created_at: serverTimestamp(),
-            expiry_date: null
+            status: 'under_review',
+            active: false,
+            created_at: serverTimestamp()
           });
-
-          if (finalBannerUrl) {
-            await addDoc(collection(db, 'promotion_banner'), {
-              title: title.trim(),
-              subtitle: tagline.trim() || description.trim().slice(0, 80),
-              badge_text: 'GAME SHOWCASE',
-              image_url: finalBannerUrl,
-              target_url: url.trim(),
-              placement: 'all',
-              active: true,
-              open_in_app: Boolean(openInApp),
-              created_at: serverTimestamp()
-            });
-          }
         }
-        setSubmissionState('free_success');
+        setSubmissionState('under_review_success');
       } else {
         // Paid App or Product -> write draft to pending_campaigns collection
         const prefix = category === 'app' ? 'FP-APP' : 'FP-PROD';
@@ -374,15 +363,20 @@ export default function PromoteView({
             <span>Powered by Bachs Payment</span>
           </div>
         </div>
-      ) : submissionState === 'free_success' ? (
-        /* ================= Free Game Success ================= */
-        <div className="rounded-3xl border border-emerald-500/30 bg-white dark:bg-[#16161d] p-8 sm:p-14 text-center max-w-2xl mx-auto shadow-2xl space-y-4 promote-card">
-          <CheckCircle2 size={54} className="mx-auto text-emerald-500 dark:text-emerald-400" />
+      ) : (submissionState === 'under_review_success' || submissionState === 'free_success') ? (
+        /* ================= Under Review Success ================= */
+        <div className="rounded-3xl border border-amber-500/40 bg-white dark:bg-[#16161d] p-8 sm:p-14 text-center max-w-2xl mx-auto shadow-2xl space-y-4 promote-card">
+          <div className="w-16 h-16 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/30 flex items-center justify-center mx-auto">
+            <CheckCircle2 size={36} className="stroke-[2.5]" />
+          </div>
+          <div className="inline-block px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold uppercase tracking-wider">
+            Status: Under Review
+          </div>
           <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">
-            Game Published Successfully!
+            Game Submitted for Review!
           </h2>
           <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-lg mx-auto">
-            Your game <strong>{title}</strong> is now live in the FirstPlay catalog. Game publishing is 100% free!
+            Your game <strong>{title}</strong> has been uploaded to the <em>under_review</em> queue. To protect platform quality and safety, all games must be reviewed and approved by an administrator before appearing live on FirstPlay.
           </p>
           <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
             <button
@@ -526,17 +520,17 @@ export default function PromoteView({
                     onClick={() => setOpenInApp(true)}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       openInApp
-                        ? 'bg-[#0071e3]/10 dark:bg-[#0071e3]/20 border-[#0071e3] shadow-xs'
+                        ? 'bg-blue-50 dark:bg-blue-100/90 border-[#0071e3] shadow-xs'
                         : 'bg-zinc-50 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/[0.08]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs font-bold ${openInApp ? 'text-[#0071e3] dark:text-blue-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
+                      <span className={`text-xs font-bold ${openInApp ? '!text-black' : 'text-zinc-800 dark:text-zinc-200'}`}>
                         Play Inside FirstPlay
                       </span>
-                      {openInApp && <CheckCircle2 size={14} className="text-[#0071e3] dark:text-blue-400 shrink-0" />}
+                      {openInApp && <CheckCircle2 size={14} className="!text-black shrink-0" />}
                     </div>
-                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
+                    <p className={`text-[11px] mt-1 leading-relaxed ${openInApp ? '!text-black opacity-90' : 'text-zinc-600 dark:text-zinc-400'}`}>
                       Loads inside FirstPlay built-in player with sandboxed controls.
                     </p>
                   </button>
@@ -546,17 +540,17 @@ export default function PromoteView({
                     onClick={() => setOpenInApp(false)}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       !openInApp
-                        ? 'bg-[#0071e3]/10 dark:bg-[#0071e3]/20 border-[#0071e3] shadow-xs'
+                        ? 'bg-blue-50 dark:bg-blue-100/90 border-[#0071e3] shadow-xs'
                         : 'bg-zinc-50 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/[0.08]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className={`text-xs font-bold ${!openInApp ? 'text-[#0071e3] dark:text-blue-400' : 'text-zinc-800 dark:text-zinc-200'}`}>
+                      <span className={`text-xs font-bold ${!openInApp ? '!text-black' : 'text-zinc-800 dark:text-zinc-200'}`}>
                         Open in New Tab
                       </span>
-                      {!openInApp && <CheckCircle2 size={14} className="text-[#0071e3] dark:text-blue-400 shrink-0" />}
+                      {!openInApp && <CheckCircle2 size={14} className="!text-black shrink-0" />}
                     </div>
-                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-1 leading-relaxed">
+                    <p className={`text-[11px] mt-1 leading-relaxed ${!openInApp ? '!text-black opacity-90' : 'text-zinc-600 dark:text-zinc-400'}`}>
                       Redirects directly to the website in a new browser tab.
                     </p>
                   </button>

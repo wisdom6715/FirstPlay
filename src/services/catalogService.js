@@ -6,7 +6,11 @@ import {
   where, 
   orderBy, 
   doc, 
-  getDoc 
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import { INITIAL_LISTINGS } from '../data/seedCatalog.js';
 
@@ -199,7 +203,15 @@ export const catalogService = {
           // 1. Fetch from official 'apps' collection
           const appsSnap = await getDocs(collection(db, 'apps'));
           appsSnap.forEach(d => {
-            const item = normalizeAppDoc(d.id, d.data());
+            const data = d.data();
+            // Invariant: turned-off games or under_review submissions NEVER appear in public app
+            if (data.active === false || data.status === 'disabled' || data.status === 'under_review') {
+              return;
+            }
+            const item = normalizeAppDoc(d.id, data);
+            if (item.active === false || item.status === 'disabled' || item.status === 'under_review') {
+              return;
+            }
             if (item.expiration_date) {
               const exp = new Date(item.expiration_date);
               if (exp > new Date()) {
@@ -215,7 +227,7 @@ export const catalogService = {
             const listingsSnap = await getDocs(collection(db, 'listings'));
             listingsSnap.forEach(d => {
               const data = d.data();
-              if (data.status === 'active') {
+              if (data.active !== false && data.status === 'active') {
                 listingItems.push(normalizeAppDoc(d.id, data));
               }
             });
@@ -444,5 +456,264 @@ export const catalogService = {
   isFavorite(itemId) {
     const current = this.getFavorites();
     return current.some(fav => fav.id === itemId);
+  },
+
+  // ================= ADMIN DASHBOARD SERVICES =================
+
+  // Fetch all games in Firestore 'apps' collection (both active and disabled)
+  async getAdminAllGames() {
+    if (!isFirebaseLive || !db) return [];
+    try {
+      const snap = await getDocs(collection(db, 'apps'));
+      const items = [];
+      snap.forEach(d => {
+        const data = d.data();
+        const normalized = normalizeAppDoc(d.id, data);
+        items.push({
+          ...normalized,
+          active: data.active !== undefined ? Boolean(data.active) : data.status !== 'disabled'
+        });
+      });
+      return items;
+    } catch (e) {
+      console.error('[Admin] Error fetching all apps:', e);
+      return [];
+    }
+  },
+
+  // Fetch all pending submissions in 'under_review' collection
+  async getAdminUnderReviewGames() {
+    if (!isFirebaseLive || !db) return [];
+    try {
+      const snap = await getDocs(collection(db, 'under_review'));
+      const items = [];
+      snap.forEach(d => {
+        const data = d.data();
+        items.push({
+          id: d.id,
+          name: data.name || data.game_name || data.title || 'Untitled Submission',
+          title: data.title || data.name || data.game_name || 'Untitled Submission',
+          category: data.category || 'game',
+          url: data.url || data.game_url || data.app_url || '',
+          logo_url: data.logo || data.logo_url || '',
+          banner_url: data.banner_url || data.flyer || data.banner || '',
+          creator: data.full_name || data.studioName || 'Independent Studio',
+          tagline: data.tagline || '',
+          description: data.description || '',
+          open_in_app: data.open_in_app !== undefined ? Boolean(data.open_in_app) : true,
+          status: 'under_review',
+          created_at: data.created_at ? (data.created_at.toDate ? data.created_at.toDate().toISOString() : data.created_at) : new Date().toISOString(),
+          raw: data
+        });
+      });
+      return items;
+    } catch (e) {
+      console.error('[Admin] Error fetching under_review collection:', e);
+      return [];
+    }
+  },
+
+  // Toggle game active status on/off in 'apps'
+  async toggleGameActive(docId, newActiveState) {
+    if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
+    const appRef = doc(db, 'apps', docId);
+    await updateDoc(appRef, {
+      active: Boolean(newActiveState),
+      status: newActiveState ? 'active' : 'disabled'
+    });
+    // Invalidate local storage cache so site re-syncs immediately
+    localStorage.removeItem(STORAGE_KEY_LISTINGS);
+  },
+
+  // Approve a submission from 'under_review' -> write to 'apps' and delete from 'under_review'
+  async approveUnderReviewGame(submission) {
+    if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
+    const category = submission.category || 'game';
+    const name = submission.name || submission.title;
+
+    // 1. Write approved record to 'apps' collection
+    const newDoc = await addDoc(collection(db, 'apps'), {
+      category,
+      name,
+      game_name: category === 'game' ? name : null,
+      app_name: category === 'app' ? name : null,
+      product_name: category === 'product' ? name : null,
+      game_url: category === 'game' ? submission.url : null,
+      app_url: category === 'app' ? submission.url : null,
+      product_url: category === 'product' ? submission.url : null,
+      url: submission.url,
+      full_name: submission.creator || 'Independent Studio',
+      tagline: submission.tagline || '',
+      description: submission.description || '',
+      logo: submission.logo_url || null,
+      logo_url: submission.logo_url || null,
+      flyer: submission.banner_url || null,
+      banner_url: submission.banner_url || null,
+      open_in_app: Boolean(submission.open_in_app),
+      payment_status: 'free',
+      status: 'active',
+      active: true,
+      created_at: serverTimestamp()
+    });
+
+    // 2. If it has a banner, also create a promotion_banner
+    if (submission.banner_url) {
+      try {
+        await addDoc(collection(db, 'promotion_banner'), {
+          title: name,
+          subtitle: submission.tagline || submission.description.slice(0, 80),
+          badge_text: 'GAME SHOWCASE',
+          image_url: submission.banner_url,
+          target_url: submission.url,
+          placement: 'all',
+          active: true,
+          open_in_app: Boolean(submission.open_in_app),
+          created_at: serverTimestamp()
+        });
+      } catch (e) {
+        console.warn('[Admin] Could not add promotion banner on approval:', e);
+      }
+    }
+
+    // 3. Delete from 'under_review'
+    if (submission.id) {
+      await deleteDoc(doc(db, 'under_review', submission.id));
+    }
+
+    // Clear local cache so changes reflect instantly
+    localStorage.removeItem(STORAGE_KEY_LISTINGS);
+    localStorage.removeItem(STORAGE_KEY_BANNERS);
+
+    return newDoc.id;
+  },
+
+  // Reject and delete from 'under_review'
+  async rejectUnderReviewGame(submissionId) {
+    if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
+    await deleteDoc(doc(db, 'under_review', submissionId));
+  },
+
+  // Permanently delete a game from 'apps'
+  async deleteGame(gameId) {
+    if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
+    await deleteDoc(doc(db, 'apps', gameId));
+    localStorage.removeItem(STORAGE_KEY_LISTINGS);
+  },
+
+  /**
+   * Verify whether an authenticated Firebase user is listed in the Firestore 'admins' collection.
+   * Neither emails nor passwords are hardcoded in the codebase; everything is governed in Firebase.
+   * 
+   * @param {{ email?: string, uid?: string }} user
+   * @returns {Promise<{ isAuthorized: boolean, adminData?: object, error?: string }>}
+   */
+  async verifyAdminUser(user) {
+    if (!user || !user.email) {
+      return { isAuthorized: false, error: 'No user email detected.' };
+    }
+
+    if (!isFirebaseLive || !db) {
+      return { isAuthorized: false, error: 'Firebase is not initialized or connected.' };
+    }
+
+    try {
+      const emailLower = user.email.toLowerCase().trim();
+
+      // 1. Check by UID: doc(db, 'admins', user.uid)
+      if (user.uid) {
+        try {
+          const uidSnap = await getDoc(doc(db, 'admins', user.uid));
+          if (uidSnap.exists()) {
+            const data = uidSnap.data();
+            if (data.active !== false) {
+              return { isAuthorized: true, adminData: { ...data, docId: uidSnap.id } };
+            }
+          }
+        } catch (e) {
+          // Fall through to email check
+        }
+      }
+
+      // 2. Check by doc ID named after the email: doc(db, 'admins', emailLower)
+      try {
+        const emailSnap = await getDoc(doc(db, 'admins', emailLower));
+        if (emailSnap.exists()) {
+          const data = emailSnap.data();
+          if (data.active !== false) {
+            return { isAuthorized: true, adminData: { ...data, docId: emailSnap.id } };
+          }
+        }
+      } catch (e) {
+        // Fall through to query
+      }
+
+      // 3. Query collection 'admins' where email == emailLower
+      try {
+        const q = query(collection(db, 'admins'), where('email', '==', emailLower));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const match = snap.docs.find(d => d.data().active !== false);
+          if (match) {
+            return { isAuthorized: true, adminData: { ...match.data(), docId: match.id } };
+          }
+        }
+      } catch (qErr) {
+        console.warn('[Admin Whitelist] Query check:', qErr);
+      }
+
+      return {
+        isAuthorized: false,
+        error: `Access Denied: "${user.email}" is not listed in the Firestore 'admins' table. Please ensure this email is added to the 'admins' collection in Firebase.`
+      };
+    } catch (err) {
+      console.error('[Admin Whitelist] Error verifying admin:', err);
+      return {
+        isAuthorized: false,
+        error: `Admin validation failed: ${err.message}`
+      };
+    }
+  },
+
+  /**
+   * Save the enrolled TOTP Base32 secret for this admin in their Firestore document.
+   * 
+   * @param {{ email?: string, uid?: string }} user 
+   * @param {string} secret - Base32 secret
+   * @param {string} [docId] - Optional document ID in 'admins'
+   */
+  async saveAdminTotpSecret(user, secret, docId) {
+    if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
+    const emailLower = user.email.toLowerCase().trim();
+
+    let targetDocRef = null;
+    if (docId) {
+      targetDocRef = doc(db, 'admins', docId);
+    } else if (user.uid) {
+      const snap = await getDoc(doc(db, 'admins', user.uid));
+      if (snap.exists()) targetDocRef = doc(db, 'admins', user.uid);
+    }
+
+    if (!targetDocRef) {
+      const snap = await getDoc(doc(db, 'admins', emailLower));
+      if (snap.exists()) targetDocRef = doc(db, 'admins', emailLower);
+    }
+
+    if (!targetDocRef) {
+      const q = query(collection(db, 'admins'), where('email', '==', emailLower));
+      const qSnap = await getDocs(q);
+      if (!qSnap.empty) {
+        targetDocRef = doc(db, 'admins', qSnap.docs[0].id);
+      }
+    }
+
+    if (!targetDocRef) {
+      targetDocRef = doc(db, 'admins', emailLower);
+    }
+
+    await updateDoc(targetDocRef, {
+      totp_secret: secret,
+      mfa_enabled: true,
+      mfa_enrolled_at: serverTimestamp()
+    });
   }
 };

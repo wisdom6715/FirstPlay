@@ -2,6 +2,7 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAnalytics, isSupported } from 'firebase/analytics';
 import { getFirestore, collection, getDocs, limit, query } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { getAuth } from 'firebase/auth';
 import { optimizeImage } from '../utils/imageUtils';
 
 // FirstPlay Firebase Configuration
@@ -18,6 +19,7 @@ export const firebaseConfig = {
 let app = null;
 let db = null;
 let storage = null;
+let auth = null;
 let analytics = null;
 let isFirebaseLive = false;
 
@@ -31,6 +33,13 @@ try {
 
   // Initialize Cloud Firestore database
   db = getFirestore(app);
+
+  // Initialize Firebase Auth
+  try {
+    auth = getAuth(app);
+  } catch (authInitErr) {
+    console.warn('[FirstPlay] Firebase Auth init warning:', authInitErr.message);
+  }
 
   // Initialize Cloud Storage
   try {
@@ -131,4 +140,4 @@ export async function uploadPromotionAsset(file, folder = 'logos') {
   return dataUrl;
 }
 
-export { app, db, storage, analytics, isFirebaseLive };
+export { app, db, storage, auth, analytics, isFirebaseLive };

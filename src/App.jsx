@@ -9,6 +9,8 @@ import FavouritesView from './views/FavouritesView';
 import LibraryView from './views/LibraryView';
 import SettingsView from './views/SettingsView';
 import PromoteView from './views/PromoteView';
+import AdminAuthView from './views/AdminAuthView';
+import AdminDashboardView from './views/AdminDashboardView';
 import { catalogService } from './services/catalogService';
 import { preloadService, PreloadState } from './services/preloadService';
 import { isLagosLife, openGameInNewTab } from './utils/gameUtils';
@@ -20,6 +22,8 @@ import { Minimize2, X, Check, Download, Info } from 'lucide-react';
 // URL Route Synchronization Helpers
 function getTabFromPath(pathname) {
   const clean = (pathname || '').toLowerCase().replace(/^\/+|\/+$/g, '');
+  if (clean === 'admin/auth' || clean === 'admin/login') return 'admin-auth';
+  if (clean === 'admin/dashboard' || clean === 'admin') return 'admin-dashboard';
   if (clean === 'promote') return 'promote';
   if (clean === 'settings') return 'settings';
   if (clean === 'search') return 'search';
@@ -30,6 +34,8 @@ function getTabFromPath(pathname) {
 
 function getPathFromTab(tab) {
   if (tab === 'discover') return '/';
+  if (tab === 'admin-auth') return '/admin/auth';
+  if (tab === 'admin-dashboard') return '/admin/dashboard';
   return `/${tab}`;
 }
 
@@ -351,6 +357,26 @@ export default function App() {
     setLegalDocType('terms');
     setIsLegalModalOpen(true);
   };
+
+  // Dedicated Firebase Admin Authentication View (site/admin/auth)
+  if (currentTab === 'admin-auth') {
+    return (
+      <AdminAuthView
+        onNavigateDashboard={() => navigateToTab('admin-dashboard')}
+        onNavigateHome={() => navigateToTab('discover')}
+      />
+    );
+  }
+
+  // Dedicated Firebase Admin Moderation Dashboard (site/admin/dashboard)
+  if (currentTab === 'admin-dashboard') {
+    return (
+      <AdminDashboardView
+        onNavigateAuth={() => navigateToTab('admin-auth')}
+        onNavigateHome={() => navigateToTab('discover')}
+      />
+    );
+  }
 
   return (
     <div className="h-screen w-screen flex flex-col bg-[var(--bg-app)] text-[var(--text-primary)] overflow-hidden relative app-root-container transition-colors duration-200">

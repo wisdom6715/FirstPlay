@@ -226,6 +226,14 @@
   background-clip: padding-box;
 }
 
+[data-theme="light"] ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
 /* Custom drag region for Electron titlebar */
 .drag-region {
   -webkit-app-region: drag;
