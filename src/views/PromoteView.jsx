@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Megaphone,
   CreditCard,
   Sparkles,
   ExternalLink,
@@ -260,20 +259,16 @@ export default function PromoteView({
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 py-6 sm:py-8 space-y-8 animate-in fade-in duration-200">
       
       {/* Top Bar Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center">
         <button
           type="button"
           onClick={onNavigateDiscover}
           className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-200/80 hover:bg-zinc-300/80 dark:bg-white/[0.08] dark:hover:bg-white/[0.15] text-xs font-semibold text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white transition-all cursor-pointer border border-black/5 dark:border-white/10"
         >
           <ArrowLeft size={13} />
-          <span>Back to Discovery</span>
+          <span className="sm:hidden">Back</span>
+          <span className="hidden sm:inline">Back to Discovery</span>
         </button>
-
-        <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-3.5 py-1 text-xs font-bold text-blue-400">
-          <Megaphone size={13} className="-rotate-12" />
-          <span>FirstPlay Promotion & Listing Hub</span>
-        </div>
       </div>
 
       {/* Hero Header Block */}
