@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { signOut, onAuthStateChanged } from 'firebase/auth';
 import { auth, uploadPromotionAsset } from '../services/firebaseConfig';
 import { catalogService } from '../services/catalogService';
+import { emailService } from '../services/emailService';
 import { 
   Shield, 
   LogOut, 
@@ -22,7 +23,8 @@ import {
   Upload,
   Image as ImageIcon,
   FileText,
-  Globe
+  Globe,
+  Mail
 } from 'lucide-react';
 import appLogo from '../assets/icon.png';
 
@@ -45,6 +47,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     name: '',
     category: 'game',
     creator: '',
+    email: '',
     url: '',
     tagline: '',
     description: '',
@@ -168,8 +171,26 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     }
     setActionInProgress(submission.id);
     try {
+      const targetEmail = submission.email || submission.publisher_email;
       await catalogService.approveUnderReviewGame(submission);
       showToast(`Approved "${submission.title || submission.name}"! Now live on the site.`);
+
+      // Send Approval Notification Email to publisher
+      if (targetEmail) {
+        try {
+          await emailService.sendApprovedEmail({
+            to: targetEmail,
+            gameTitle: submission.title || submission.name,
+            studioName: submission.creator || submission.studioName || 'Independent Studio',
+            gameUrl: submission.url,
+            gameId: submission.id
+          });
+          console.info(`[AdminDashboard] Approval notification email sent to ${targetEmail}`);
+        } catch (mailErr) {
+          console.warn('[AdminDashboard] Could not send approval email notice:', mailErr);
+        }
+      }
+
       await loadDashboardData();
     } catch (err) {
       console.error('Error approving submission:', err);
@@ -186,8 +207,25 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     }
     setActionInProgress(submission.id);
     try {
+      const targetEmail = submission.email || submission.publisher_email;
       await catalogService.rejectUnderReviewGame(submission.id);
       showToast(`Rejected and removed "${submission.title || submission.name}".`, 'info');
+
+      // Send Rejection Notice Email to publisher
+      if (targetEmail) {
+        try {
+          await emailService.sendRejectedEmail({
+            to: targetEmail,
+            gameTitle: submission.title || submission.name,
+            studioName: submission.creator || submission.studioName || 'Independent Studio',
+            gameUrl: submission.url
+          });
+          console.info(`[AdminDashboard] Rejection notice email sent to ${targetEmail}`);
+        } catch (mailErr) {
+          console.warn('[AdminDashboard] Could not send rejection email notice:', mailErr);
+        }
+      }
+
       await loadDashboardData();
     } catch (err) {
       console.error('Error rejecting submission:', err);
@@ -222,6 +260,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
       name: item.name || item.title || '',
       category: item.category || 'game',
       creator: item.creator || item.full_name || '',
+      email: item.email || item.publisher_email || '',
       url: item.url || '',
       tagline: item.tagline || '',
       description: item.description || '',
@@ -306,6 +345,8 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
         title: editForm.name.trim(),
         url: editForm.url.trim(),
         creator: editForm.creator.trim(),
+        email: (editForm.email || '').trim().toLowerCase(),
+        publisher_email: (editForm.email || '').trim().toLowerCase(),
         tagline: editForm.tagline.trim(),
         description: editForm.description.trim(),
         logo_url: finalLogoUrl,
@@ -326,6 +367,24 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
           )
         );
         showToast(`Updated "${payload.name}" details! Live changes synced.`);
+      }
+
+      // Send Game Details Updated Notification Email to publisher
+      const targetEmail = payload.email || editingItem.email || editingItem.publisher_email;
+      if (targetEmail) {
+        try {
+          await emailService.sendUpdatedEmail({
+            to: targetEmail,
+            gameTitle: payload.name,
+            studioName: payload.creator || 'Independent Studio',
+            gameUrl: payload.url,
+            category: payload.category || 'game',
+            isUnderReview: Boolean(editingItem.isUnderReview)
+          });
+          console.info(`[AdminDashboard] Update notice email sent to ${targetEmail}`);
+        } catch (mailErr) {
+          console.warn('[AdminDashboard] Email update notice warning:', mailErr);
+        }
       }
 
       setIsEditModalOpen(false);
@@ -371,7 +430,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
           </button>
           <div className="flex items-center gap-2.5">
             <img 
-              src={appLogo?.src || appLogo || '/icon.png'} 
+              src={appLogo?.src || '/icon.png'} 
               alt="FirstPlay" 
               className="w-8 h-8 rounded-xl object-contain border border-zinc-200 shadow-xs"
             />
@@ -533,6 +592,12 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                       <p className="text-xs text-zinc-600 truncate">
                         Studio: <strong className="text-zinc-800">{item.creator}</strong>
                       </p>
+                      {(item.email || item.publisher_email) && (
+                        <p className="text-xs text-zinc-500 truncate flex items-center gap-1.5 mt-0.5">
+                          <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                          <span className="font-mono text-[11px] text-zinc-700">{item.email || item.publisher_email}</span>
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -690,6 +755,9 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                           </div>
                           <p className="text-xs text-zinc-500 truncate mt-0.5">
                             {game.creator} • <span className="font-mono text-zinc-400">{game.url}</span>
+                            {(game.email || game.publisher_email) && (
+                              <span className="text-zinc-500 font-mono text-[11px]"> • {game.email || game.publisher_email}</span>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -890,6 +958,22 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                     placeholder="https://..."
                     className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-300 text-xs sm:text-sm text-zinc-900 outline-none focus:bg-white focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/20 transition font-mono text-xs"
                   />
+                </div>
+
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="block text-xs font-bold text-zinc-800">
+                    Publisher Contact Email (For approval & update notifications)
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="email"
+                      value={editForm.email || ''}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="publisher@domain.com"
+                      className="w-full pl-10 pr-3.5 py-2.5 rounded-xl bg-zinc-50 border border-zinc-300 text-xs sm:text-sm text-zinc-900 outline-none focus:bg-white focus:border-[#0071e3] focus:ring-2 focus:ring-[#0071e3]/20 transition"
+                    />
+                  </div>
                 </div>
               </div>
 

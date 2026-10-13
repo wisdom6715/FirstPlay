@@ -7,13 +7,13 @@ import { optimizeImage } from '../utils/imageUtils';
 
 // FirstPlay Firebase Configuration
 export const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDzEwZ17vr_dQr4GwKt7g9_HJyNg1dZvaQ",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "firstplay-7bd63.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "firstplay-7bd63",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "firstplay-7bd63.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "500436337213",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:500436337213:web:b9787c1bfa87aa706ee054",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-N6L8HZM93V"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY) || "AIzaSyDzEwZ17vr_dQr4GwKt7g9_HJyNg1dZvaQ",
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN) || "firstplay-7bd63.firebaseapp.com",
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_PROJECT_ID) || "firstplay-7bd63",
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET) || "firstplay-7bd63.firebasestorage.app",
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID) || "500436337213",
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_APP_ID) || "1:500436337213:web:b9787c1bfa87aa706ee054",
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID || (typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID) || "G-N6L8HZM93V"
 };
 
 let app = null;

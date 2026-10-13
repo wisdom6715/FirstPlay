@@ -258,7 +258,7 @@ export default function AdminAuthView({ onNavigateDashboard, onNavigateHome }) {
         <div className="text-center space-y-2.5">
           <div className="inline-flex p-3 rounded-2xl bg-white border border-zinc-200 shadow-md mb-1">
             <img 
-              src={appLogo?.src || appLogo || '/icon.png'} 
+              src={appLogo?.src || '/icon.png'} 
               alt="FirstPlay" 
               className="w-11 h-11 rounded-xl object-contain"
             />

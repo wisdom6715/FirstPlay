@@ -471,6 +471,7 @@ export const catalogService = {
         const normalized = normalizeAppDoc(d.id, data);
         items.push({
           ...normalized,
+          email: data.email || data.publisher_email || '',
           active: data.active !== undefined ? Boolean(data.active) : data.status !== 'disabled'
         });
       });
@@ -495,6 +496,8 @@ export const catalogService = {
           title: data.title || data.name || data.game_name || 'Untitled Submission',
           category: data.category || 'game',
           url: data.url || data.game_url || data.app_url || '',
+          email: data.email || data.publisher_email || '',
+          publisher_email: data.email || data.publisher_email || '',
           logo_url: data.logo || data.logo_url || '',
           banner_url: data.banner_url || data.flyer || data.banner || '',
           creator: data.full_name || data.studioName || 'Independent Studio',
@@ -543,6 +546,8 @@ export const catalogService = {
       product_url: category === 'product' ? (updatePayload.url || '').trim() : (updatePayload.product_url || updatePayload.url || '').trim(),
       creator: (updatePayload.creator || updatePayload.full_name || 'Independent Studio').trim(),
       full_name: (updatePayload.creator || updatePayload.full_name || 'Independent Studio').trim(),
+      email: (updatePayload.email || updatePayload.publisher_email || '').trim().toLowerCase() || null,
+      publisher_email: (updatePayload.email || updatePayload.publisher_email || '').trim().toLowerCase() || null,
       tagline: (updatePayload.tagline || '').trim(),
       description: (updatePayload.description || '').trim(),
       logo: updatePayload.logo_url || updatePayload.logo || null,
@@ -581,6 +586,8 @@ export const catalogService = {
       url: (updatePayload.url || '').trim(),
       creator: (updatePayload.creator || 'Independent Studio').trim(),
       full_name: (updatePayload.creator || 'Independent Studio').trim(),
+      email: (updatePayload.email || updatePayload.publisher_email || '').trim().toLowerCase() || null,
+      publisher_email: (updatePayload.email || updatePayload.publisher_email || '').trim().toLowerCase() || null,
       tagline: (updatePayload.tagline || '').trim(),
       description: (updatePayload.description || '').trim(),
       logo_url: updatePayload.logo_url || null,
@@ -611,6 +618,8 @@ export const catalogService = {
       app_url: category === 'app' ? submission.url : null,
       product_url: category === 'product' ? submission.url : null,
       url: submission.url,
+      email: submission.email || submission.publisher_email || null,
+      publisher_email: submission.email || submission.publisher_email || null,
       creator: submission.creator || 'Independent Studio',
       full_name: submission.creator || 'Independent Studio',
       tagline: submission.tagline || '',

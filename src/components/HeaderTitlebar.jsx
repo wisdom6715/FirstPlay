@@ -60,11 +60,11 @@ export default function HeaderTitlebar({
         )}
         <div className="flex items-center gap-2 select-none">
           <img 
-            src={appLogo} 
+            src={appLogo?.src || '/icon.png'} 
             alt="FirstPlay" 
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl object-contain shadow-md border border-white/15" 
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl object-contain shadow-md border border-white/15 shrink-0" 
           />
-          <span className="text-xs font-bold tracking-wider text-white hidden sm:inline">
+          <span className="text-[11px] sm:text-xs font-bold tracking-wider text-white">
             FIRSTPLAY
           </span>
         </div>

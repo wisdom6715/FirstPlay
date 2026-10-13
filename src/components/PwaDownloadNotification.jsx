@@ -50,7 +50,7 @@ export default function PwaDownloadNotification({ onInstallClick, onDownloadClic
     >
       <div className="flex items-start gap-3">
         <img
-          src={appLogo}
+          src={appLogo?.src || '/icon.png'}
           alt="FirstPlay"
           className="w-11 h-11 rounded-xl object-contain border border-black/10 dark:border-white/15 shadow-md shrink-0"
         />
