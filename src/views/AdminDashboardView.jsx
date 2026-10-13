@@ -430,7 +430,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
           </button>
           <div className="flex items-center gap-2.5">
             <img 
-              src={appLogo?.src || appLogo || '/icon.png'} 
+              src={appLogo?.src || '/icon.png'} 
               alt="FirstPlay" 
               className="w-8 h-8 rounded-xl object-contain border border-zinc-200 shadow-xs"
             />
