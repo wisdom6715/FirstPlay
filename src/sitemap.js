@@ -3,26 +3,12 @@
  * Powers Google Search indexing, Image discovery, and Social Crawlers.
  */
 
-export interface SitemapImage {
-  loc: string;
-  title?: string;
-  caption?: string;
-}
-
-export interface SitemapEntry {
-  url: string;
-  lastModified?: string;
-  changeFrequency?: 'always' | 'hourly' | 'daily' | 'weekly' | 'monthly' | 'yearly' | 'never';
-  priority?: number;
-  images?: SitemapImage[];
-}
-
 export const SITE_URL = 'https://firstplay.app';
 
 /**
  * Transforms string into a clean, search-engine friendly slug.
  */
-export function slugify(text: string): string {
+export function slugify(text) {
   if (!text) return '';
   return text
     .toString()
@@ -38,7 +24,7 @@ export function slugify(text: string): string {
 /**
  * Standard Static Routes for FirstPlay
  */
-export const STATIC_ROUTES: SitemapEntry[] = [
+export const STATIC_ROUTES = [
   {
     url: `${SITE_URL}/`,
     lastModified: new Date().toISOString(),
@@ -59,8 +45,8 @@ export const STATIC_ROUTES: SitemapEntry[] = [
   {
     url: `${SITE_URL}/category`,
     lastModified: new Date().toISOString(),
-    changeFrequency: 'daily',
-    priority: 0.9
+    changeFrequency: 'weekly',
+    priority: 0.8
   },
   {
     url: `${SITE_URL}/search`,
@@ -72,19 +58,7 @@ export const STATIC_ROUTES: SitemapEntry[] = [
     url: `${SITE_URL}/promote`,
     lastModified: new Date().toISOString(),
     changeFrequency: 'weekly',
-    priority: 0.8,
-    images: [
-      {
-        loc: `${SITE_URL}/firstplay_x_cover.jpg`,
-        title: 'Submit and Promote Your Nigerian and African Web Game'
-      }
-    ]
-  },
-  {
-    url: `${SITE_URL}/favourite`,
-    lastModified: new Date().toISOString(),
-    changeFrequency: 'weekly',
-    priority: 0.7
+    priority: 0.8
   },
   {
     url: `${SITE_URL}/settings`,
@@ -95,38 +69,31 @@ export const STATIC_ROUTES: SitemapEntry[] = [
 ];
 
 /**
- * Mandatory Top Games that rank first on FirstPlay
+ * Top Featured Showcase Games
  */
-export const TOP_FEATURED_GAMES: Array<{
-  name: string;
-  slug: string;
-  description: string;
-  priority: number;
-  logoUrl?: string;
-  bannerUrl?: string;
-}> = [
+export const TOP_FEATURED_GAMES = [
   {
     name: 'Lagos Life',
     slug: 'lagos-life',
-    description: 'A Sims-style life game set in Lagos. Ride danfo, chop amala at Shitta, party at Quilox, survive NEPA and make real friends.',
+    description: 'Immerse yourself in Lagos State across three distinct islands: Victoria Island, Lekki Phase 1, and Ikoyi. Live, drive, work, and thrive in Africa’s bustling metropolis.',
     priority: 0.98,
-    logoUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557081393_logo_Minimalist_Crown_Icon.png?alt=media&token=4bf19efe-c889-4a85-8ac9-6a9261cfdce4',
-    bannerUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557086675_banner_ecf94e5fc0f6dd3569d4addfb4eac6bc2aed320d__1_.png?alt=media&token=f2b81c7c-35e4-49ab-9a5b-b742cfdb95a0'
+    logoUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557088927_logo_lagos_life_banner.png?alt=media&token=e9d5ca0c-a901-447a-bd0a-a53c61ae0cbb',
+    bannerUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557088927_banner_lagos_life_banner.png?alt=media&token=42d13b4e-28b3-4f96-857c-9b5db29a3a89'
   },
   {
     name: 'Danfo Run',
     slug: 'danfo-run',
-    description: 'Drive the danfo from Ojuelegba to Yaba. Pick up passengers, dodge the go-slow and top the live leaderboard with Afrobeats soundtrack.',
+    description: 'Navigate the unpredictable highways of Lagos as an agile Danfo bus driver. Dodge LASTMA officers, agberos, and traffic jams in this high-adrenaline endless runner.',
     priority: 0.95,
-    logoUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2FLagos%20Gaming%20Speed%20Logo.png?alt=media&token=b457f1a1-e33a-4510-929e-9d4f79d2bd3b',
-    bannerUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791550950504_banner_WhatsApp_Image_2026-10-08_at_3.47.45_PM.jpeg?alt=media&token=d7f943ba-ac56-4f67-bb49-eefb1079f060'
+    logoUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557085123_logo_danfo_run.png?alt=media&token=582c6be3-29a4-4770-bdc7-e3d64b1842fa',
+    bannerUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557085123_banner_danfo_run.png?alt=media&token=38da30cf-dcf4-49c8-9ebc-2d33beaf3256'
   },
   {
     name: 'Monkey Post',
     slug: 'monkey-post',
-    description: 'Authentic Nigerian street football showdown. 2-on-2 mini post action, sharp turns, slick nutmegs, and raw street energy on the pitches of Lagos.',
+    description: 'Relive classic Nigerian street soccer. Fast-paced 3v3 barefoot football action with trick shots, local slang commentary, and nostalgic neighborhood rivalries.',
     priority: 0.92,
-    logoUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2FLagos%20Gaming%20Speed%20Logo.png?alt=media&token=b457f1a1-e33a-4510-929e-9d4f79d2bd3b',
+    logoUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557086675_logo_monkey_post.png?alt=media&token=8ad1a28a-773a-4411-9e80-d66ba595a8e0',
     bannerUrl: 'https://firebasestorage.googleapis.com/v0/b/firstplay-7bd63.firebasestorage.app/o/promotions%2F1791557086675_banner_ecf94e5fc0f6dd3569d4addfb4eac6bc2aed320d__1_.png?alt=media&token=f2b81c7c-35e4-49ab-9a5b-b742cfdb95a0'
   },
   {
@@ -142,16 +109,16 @@ export const TOP_FEATURED_GAMES: Array<{
 /**
  * Builds the complete list of sitemap URLs mixing top 4 games + dynamic games from Firebase
  */
-export function generateSitemapEntries(dynamicGames: any[] = []): SitemapEntry[] {
-  const entries: SitemapEntry[] = [...STATIC_ROUTES];
-  const seenUrls = new Set<string>(entries.map(e => e.url));
+export function generateSitemapEntries(dynamicGames = []) {
+  const entries = [...STATIC_ROUTES];
+  const seenUrls = new Set(entries.map(e => e.url));
 
   // 1. Add Top 4 Games
   TOP_FEATURED_GAMES.forEach(game => {
     const url = `${SITE_URL}/game/${game.slug}`;
     if (!seenUrls.has(url)) {
       seenUrls.add(url);
-      const images: SitemapImage[] = [];
+      const images = [];
       if (game.bannerUrl) images.push({ loc: game.bannerUrl, title: `${game.name} Banner` });
       if (game.logoUrl) images.push({ loc: game.logoUrl, title: `${game.name} Logo` });
 
@@ -177,7 +144,7 @@ export function generateSitemapEntries(dynamicGames: any[] = []): SitemapEntry[]
       const url = `${SITE_URL}/game/${slug}`;
       if (!seenUrls.has(url)) {
         seenUrls.add(url);
-        const images: SitemapImage[] = [];
+        const images = [];
         if (game.banner_url || game.bannerUrl) {
           images.push({ loc: game.banner_url || game.bannerUrl, title: `${rawName} Banner` });
         }
@@ -202,7 +169,7 @@ export function generateSitemapEntries(dynamicGames: any[] = []): SitemapEntry[]
 /**
  * Generates production-ready XML string for sitemap.xml with Google Image namespace
  */
-export function generateSitemapXml(dynamicGames: any[] = []): string {
+export function generateSitemapXml(dynamicGames = []) {
   const entries = generateSitemapEntries(dynamicGames);
 
   const xmlEntries = entries.map(entry => {
@@ -228,7 +195,7 @@ ${xmlEntries}
 </urlset>`;
 }
 
-function escapeXml(unsafe: string): string {
+function escapeXml(unsafe) {
   if (!unsafe) return '';
   return unsafe.replace(/[<>&'"]/g, (c) => {
     switch (c) {
@@ -245,7 +212,7 @@ function escapeXml(unsafe: string): string {
 /**
  * Generates standard robots.txt specification
  */
-export function generateRobotsTxt(): string {
+export function generateRobotsTxt() {
   return `# FirstPlay Robots Specification
 User-agent: *
 Allow: /

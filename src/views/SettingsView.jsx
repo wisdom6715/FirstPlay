@@ -232,7 +232,7 @@ export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
             </div>
             <div className="p-3 rounded-xl bg-black/30 border border-white/[0.04]">
               <span className="text-zinc-500 text-[10px] block">Web Engine</span>
-              <span className="font-medium text-white block mt-0.5">Vite 6 + React 19</span>
+              <span className="font-medium text-white block mt-0.5">Next.js 16 + React 19</span>
             </div>
             <div className="p-3 rounded-xl bg-black/30 border border-white/[0.04]">
               <span className="text-zinc-500 text-[10px] block">Platform</span>
