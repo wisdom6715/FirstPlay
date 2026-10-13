@@ -13,11 +13,13 @@ import {
   Upload,
   CheckCircle2,
   AlertCircle,
-  ArrowLeft
+  ArrowLeft,
+  Mail
 } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../services/firebaseConfig';
+import { emailService } from '../services/emailService';
 import Footer from '../components/Footer';
 
 const BACHS_PAYMENT_LINKS = {
@@ -64,6 +66,7 @@ export default function PromoteView({
 }) {
   const [category, setCategory] = useState('game'); // 'game' | 'app' | 'product'
   const [studioName, setStudioName] = useState('');
+  const [email, setEmail] = useState('');
   const [title, setTitle] = useState('');
   const [tagline, setTagline] = useState('');
   const [url, setUrl] = useState('');
@@ -126,6 +129,7 @@ export default function PromoteView({
     setTitle('');
     setUrl('');
     setStudioName('');
+    setEmail('');
     setTagline('');
     setDescription('');
     setIconFile(null);
@@ -143,6 +147,11 @@ export default function PromoteView({
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim() || !url.trim()) return;
+
+    if (!email.trim() || !email.includes('@')) {
+      setErrorMessage('Please provide a valid publisher email address.');
+      return;
+    }
 
     setLoading(true);
     setErrorMessage(null);
@@ -176,6 +185,8 @@ export default function PromoteView({
             game_name: title.trim(),
             game_url: url.trim(),
             url: url.trim(),
+            email: email.trim().toLowerCase(),
+            publisher_email: email.trim().toLowerCase(),
             full_name: studioName.trim() || 'Independent Studio',
             studioName: studioName.trim() || 'Independent Studio',
             tagline: tagline.trim(),
@@ -192,6 +203,20 @@ export default function PromoteView({
             created_at: serverTimestamp()
           });
         }
+
+        // Send Under Review confirmation email via Resend
+        try {
+          await emailService.sendUnderReviewEmail({
+            to: email.trim().toLowerCase(),
+            gameTitle: title.trim(),
+            studioName: studioName.trim() || 'Independent Studio',
+            gameUrl: url.trim()
+          });
+          console.info('[PromoteView] Under review email notification sent to', email);
+        } catch (mailErr) {
+          console.warn('[PromoteView] Email notification notice:', mailErr);
+        }
+
         setSubmissionState('under_review_success');
       } else {
         // Paid App or Product -> write draft to pending_campaigns collection
@@ -204,6 +229,8 @@ export default function PromoteView({
             reference: refCode,
             category,
             title: title.trim(),
+            email: email.trim().toLowerCase(),
+            publisher_email: email.trim().toLowerCase(),
             studioName: studioName.trim() || 'Independent Studio',
             tagline: tagline.trim(),
             url: url.trim(),
@@ -458,6 +485,27 @@ export default function PromoteView({
                   placeholder="e.g. Lagos Interactive or Paystack Studio"
                   className="w-full rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-white/[0.04] px-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
                 />
+              </div>
+
+              {/* Publisher Contact Email */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 dark:text-zinc-200 mb-1.5 flex items-center justify-between">
+                  <span>Publisher Email Address *</span>
+                  <span className="text-[10px] text-zinc-500 font-normal">For review updates &amp; status notifications</span>
+                </label>
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-zinc-400 dark:text-zinc-500">
+                    <Mail size={15} />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="publisher@yourstudio.com"
+                    className="w-full rounded-xl border border-zinc-300 dark:border-white/10 bg-white dark:bg-white/[0.04] pl-10 pr-4 py-2.5 text-xs sm:text-sm text-zinc-900 dark:text-white outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
+                  />
+                </div>
               </div>
 
               {/* Title */}
