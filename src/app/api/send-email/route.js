@@ -25,7 +25,7 @@ export async function POST(request) {
       );
     }
 
-    const fromAddress = from || 'FirstPlay <onboarding@resend.dev>';
+    const fromAddress = process.env.RESEND_FROM_EMAIL || from || 'FirstPlay <notifications@firstplay.fun>';
 
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
