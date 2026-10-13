@@ -193,7 +193,7 @@ export async function sendUnderReviewEmail({ to, gameTitle, studioName, gameUrl 
     badgeColor: '#b45309',
     badgeBorder: '#fde68a',
     title: `Submission Received for "${gameTitle}"`,
-    introText: `Thank you for submitting your title to FirstPlay. To maintain optimal performance, safety, and an authentic experience for African web gamers, all new entries are queued for review before going live.`,
+    introText: `Thank you for submitting your game to FirstPlay. To maintain optimal performance, safety, and an authentic experience for African web gamers, all new entries are queued for review before going live.`,
     details: [
       { label: 'Game Title', value: gameTitle },
       { label: 'Studio / Creator', value: studioName || 'Independent Studio' },
@@ -289,7 +289,7 @@ export async function sendUpdatedEmail({ to, gameTitle, studioName, gameUrl, cat
     title: `Listing Details Updated`,
     introText: `The catalog details for <strong>${escapeHtml(gameTitle)}</strong> have been updated by administrators in the FirstPlay database. All changes have been synchronized live.`,
     details: [
-      { label: 'Title', value: gameTitle },
+      { label: 'Game Title', value: gameTitle },
       { label: 'Studio / Creator', value: studioName || 'Independent Studio' },
       { label: 'Category', value: category.toUpperCase() },
       { label: 'Destination URL', value: gameUrl, isLink: true },
