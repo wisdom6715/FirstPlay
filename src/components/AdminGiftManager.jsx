@@ -29,8 +29,20 @@ const DEFAULT_ZERO_SEGMENTS = [
   { id: 'seg_6', amount: 0, amountLabel: '0 MB', subLabel: 'Data', giftType: 'data', unit: 'MB', color: '#ffffff', textColor: '#0a0a0f' }
 ];
 
-export default function AdminGiftManager({ onShowToast }) {
-  const [subTab, setSubTab] = useState('wheel'); // 'wheel' | 'gifts' | 'redemptions'
+export default function AdminGiftManager({ 
+  onShowToast, 
+  activeSubTab = 'wheel', 
+  hideTopNav = true,
+  onGiftsCountChange 
+}) {
+  const [internalSubTab, setInternalSubTab] = useState(activeSubTab || 'wheel');
+  const subTab = activeSubTab || internalSubTab;
+
+  useEffect(() => {
+    if (activeSubTab) {
+      setInternalSubTab(activeSubTab);
+    }
+  }, [activeSubTab]);
 
   // ==========================================
   // 1. Wheel Config State
@@ -93,13 +105,16 @@ export default function AdminGiftManager({ onShowToast }) {
       });
       if (res?.success && Array.isArray(res.gifts)) {
         setGiftsList(res.gifts);
+        if (onGiftsCountChange) {
+          onGiftsCountChange(res.gifts.length);
+        }
       }
     } catch (err) {
       console.error('[AdminGiftManager] Error loading gifts:', err);
     } finally {
       setIsLoadingGifts(false);
     }
-  }, [giftTypeFilter, giftStatusFilter]);
+  }, [giftTypeFilter, giftStatusFilter, onGiftsCountChange]);
 
   // Load Redemptions Log
   const loadRedemptions = useCallback(async () => {
@@ -258,60 +273,62 @@ export default function AdminGiftManager({ onShowToast }) {
   return (
     <div className="space-y-6">
       
-      {/* Sub-navigation Pills */}
-      <div className="flex items-center justify-between border-b border-zinc-200 pb-3 flex-wrap gap-3">
-        <div className="flex items-center gap-1.5 p-1 bg-zinc-100 rounded-xl border border-zinc-200">
-          <button
-            type="button"
-            onClick={() => setSubTab('wheel')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
-              subTab === 'wheel'
-                ? 'bg-white text-zinc-900 shadow-xs'
-                : 'text-zinc-600 hover:text-zinc-900'
-            }`}
-          >
-            <Disc size={14} className={subTab === 'wheel' ? 'text-[#0071e3]' : 'text-zinc-400'} />
-            <span>6-Segment Wheel</span>
-          </button>
+      {/* Sub-navigation Pills (Hidden when controlled by left sidebar) */}
+      {!hideTopNav && (
+        <div className="flex items-center justify-between border-b border-zinc-200 pb-3 flex-wrap gap-3">
+          <div className="flex items-center gap-1.5 p-1 bg-zinc-100 rounded-xl border border-zinc-200">
+            <button
+              type="button"
+              onClick={() => setInternalSubTab('wheel')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
+                subTab === 'wheel'
+                  ? 'bg-white text-zinc-900 shadow-xs'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              <Disc size={14} className={subTab === 'wheel' ? 'text-[#0071e3]' : 'text-zinc-400'} />
+              <span>6-Segment Wheel</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setSubTab('gifts')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
-              subTab === 'gifts'
-                ? 'bg-white text-zinc-900 shadow-xs'
-                : 'text-zinc-600 hover:text-zinc-900'
-            }`}
-          >
-            <Gift size={14} className={subTab === 'gifts' ? 'text-[#0071e3]' : 'text-zinc-400'} />
-            <span>Gifts Catalog ({giftsList.length})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setInternalSubTab('gifts')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
+                subTab === 'gifts'
+                  ? 'bg-white text-zinc-900 shadow-xs'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              <Gift size={14} className={subTab === 'gifts' ? 'text-[#0071e3]' : 'text-zinc-400'} />
+              <span>Gifts Catalog ({giftsList.length})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setSubTab('redemptions')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
-              subTab === 'redemptions'
-                ? 'bg-white text-zinc-900 shadow-xs'
-                : 'text-zinc-600 hover:text-zinc-900'
-            }`}
-          >
-            <Ticket size={14} className={subTab === 'redemptions' ? 'text-[#0071e3]' : 'text-zinc-400'} />
-            <span>Redemptions Log</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setInternalSubTab('redemptions')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-2 ${
+                subTab === 'redemptions'
+                  ? 'bg-white text-zinc-900 shadow-xs'
+                  : 'text-zinc-600 hover:text-zinc-900'
+              }`}
+            >
+              <Ticket size={14} className={subTab === 'redemptions' ? 'text-[#0071e3]' : 'text-zinc-400'} />
+              <span>Redemptions Log</span>
+            </button>
+          </div>
+
+          {subTab === 'gifts' && (
+            <button
+              type="button"
+              onClick={() => handleOpenGiftModal()}
+              className="px-3.5 py-1.5 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+            >
+              <Plus size={14} />
+              <span>Create New Gift</span>
+            </button>
+          )}
         </div>
-
-        {subTab === 'gifts' && (
-          <button
-            type="button"
-            onClick={() => handleOpenGiftModal()}
-            className="px-3.5 py-1.5 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer"
-          >
-            <Plus size={14} />
-            <span>Create New Gift</span>
-          </button>
-        )}
-      </div>
+      )}
 
       {/* =========================================================================
           TAB 1: 6-SEGMENT SPIN WHEEL CONFIGURATION
@@ -483,7 +500,7 @@ export default function AdminGiftManager({ onShowToast }) {
               </p>
             </div>
 
-            {/* Filters */}
+            {/* Filters & Action */}
             <div className="flex items-center gap-2">
               <select
                 value={giftTypeFilter}
@@ -506,6 +523,15 @@ export default function AdminGiftManager({ onShowToast }) {
                 <option value="active">Active Only</option>
                 <option value="inactive">Inactive Only</option>
               </select>
+
+              <button
+                type="button"
+                onClick={() => handleOpenGiftModal()}
+                className="px-3.5 h-8 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-bold flex items-center gap-1.5 transition shadow-xs cursor-pointer ml-1"
+              >
+                <Plus size={14} />
+                <span>Create New Gift</span>
+              </button>
             </div>
           </div>
 

@@ -25,7 +25,11 @@ import {
   FileText,
   Globe,
   Mail,
-  Gift
+  Gift,
+  ChevronDown,
+  Disc,
+  Ticket,
+  Menu
 } from 'lucide-react';
 import appLogo from '../assets/icon.png';
 import AdminGiftManager from '../components/AdminGiftManager';
@@ -34,7 +38,12 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
 
-  const [adminTab, setAdminTab] = useState('catalog');
+  // Navigation State
+  const [activeNav, setActiveNav] = useState('catalog'); // 'catalog' | 'wheel' | 'gifts' | 'redemptions'
+  const [isGiftDropdownOpen, setIsGiftDropdownOpen] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [giftsCount, setGiftsCount] = useState(0);
+
   const [underReviewList, setUnderReviewList] = useState([]);
   const [allGamesList, setAllGamesList] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -418,10 +427,20 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const disabledCount = allGamesList.length - activeCount;
 
   return (
-    <div className="h-screen w-full bg-[#f5f5f7] text-[#1d1d1f] flex flex-col font-sans select-none overflow-y-auto overflow-x-hidden pb-20">
+    <div className="h-screen w-full bg-[#f5f5f7] text-[#1d1d1f] flex flex-col font-sans select-none overflow-hidden">
       {/* Top Admin Header Bar */}
-      <header className="h-16 w-full bg-white/95 backdrop-blur-xl border-b border-zinc-200/90 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-40 shadow-xs shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="h-16 w-full bg-white/95 backdrop-blur-xl border-b border-zinc-200/90 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Mobile Sidebar Hamburger Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen((prev) => !prev)}
+            title="Toggle Navigation Menu"
+            className="md:hidden w-9 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 flex items-center justify-center text-zinc-700 transition cursor-pointer"
+          >
+            {isMobileSidebarOpen ? <X size={16} /> : <Menu size={16} />}
+          </button>
+
           <button
             type="button"
             onClick={onNavigateHome}
@@ -487,44 +506,201 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-9 pb-24">
-        
-        {/* Admin Navigation Pills */}
-        <div className="flex items-center gap-2.5 border-b border-zinc-200/90 pb-4 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setAdminTab('catalog')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              adminTab === 'catalog'
-                ? 'bg-[#0071e3] text-white shadow-xs'
-                : 'bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200'
-            }`}
-          >
-            <Gamepad2 size={15} />
-            <span>Game Catalog & Approvals ({underReviewList.length + allGamesList.length})</span>
-          </button>
+      {/* Dashboard Body with Left Sidebar + Scrollable Main Content */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile Backdrop */}
+        {isMobileSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-150"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
 
-          <button
-            type="button"
-            onClick={() => setAdminTab('rewards')}
-            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
-              adminTab === 'rewards'
-                ? 'bg-[#0071e3] text-white shadow-xs'
-                : 'bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200'
-            }`}
-          >
-            <Gift size={15} />
-            <span>Gifts, Wheel & Redemptions</span>
-          </button>
-        </div>
+        {/* Sidebar Navigation Aside */}
+        <aside
+          className={`fixed md:static inset-y-0 left-0 z-50 md:z-auto w-64 sm:w-72 bg-white border-r border-zinc-200/90 flex flex-col justify-between shrink-0 transition-transform duration-200 ease-in-out md:translate-x-0 ${
+            isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+          }`}
+        >
+          {/* Mobile Header in Aside */}
+          <div className="p-4 border-b border-zinc-100 flex items-center justify-between md:hidden">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Navigation Menu</span>
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 cursor-pointer"
+            >
+              <X size={15} />
+            </button>
+          </div>
 
-        {adminTab === 'rewards' ? (
-          <AdminGiftManager onShowToast={showToast} />
-        ) : (
-          <>
-            {/* Metric Badges Banner */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          {/* Navigation Links Area */}
+          <div className="flex-1 overflow-y-auto p-3.5 space-y-1.5">
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+              Navigation
+            </div>
+
+            {/* Nav Button 1: Game Approval Catalogue */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNav('catalog');
+                setIsMobileSidebarOpen(false);
+              }}
+              className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between text-left cursor-pointer group ${
+                activeNav === 'catalog'
+                  ? 'bg-[#0071e3] text-white shadow-xs'
+                  : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Gamepad2 
+                  size={16} 
+                  className={activeNav === 'catalog' ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-800'} 
+                />
+                <span>Game Approval Catalogue</span>
+              </div>
+              {underReviewList.length > 0 ? (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                  activeNav === 'catalog' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700 border border-amber-200'
+                }`}>
+                  {underReviewList.length}
+                </span>
+              ) : (
+                <span className={`text-[11px] font-medium ${activeNav === 'catalog' ? 'text-white/80' : 'text-zinc-400'}`}>
+                  {allGamesList.length}
+                </span>
+              )}
+            </button>
+
+            {/* Nav Button 2: Gift Redemption (Dropdown Accordion) */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsGiftDropdownOpen((prev) => !prev);
+                  if (activeNav === 'catalog') {
+                    setActiveNav('wheel');
+                  }
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between text-left cursor-pointer group ${
+                  activeNav !== 'catalog'
+                    ? 'bg-blue-50/70 text-[#0071e3] border border-blue-100'
+                    : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Gift 
+                    size={16} 
+                    className={activeNav !== 'catalog' ? 'text-[#0071e3]' : 'text-zinc-500 group-hover:text-zinc-800'} 
+                  />
+                  <span>Gift Redemption</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {giftsCount > 0 && (
+                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
+                      activeNav !== 'catalog' ? 'bg-blue-200/60 text-[#0071e3]' : 'bg-zinc-100 text-zinc-500'
+                    }`}>
+                      {giftsCount}
+                    </span>
+                  )}
+                  <ChevronDown
+                    size={15}
+                    className={`transition-transform duration-200 ${
+                      isGiftDropdownOpen ? 'rotate-0 text-[#0071e3]' : '-rotate-90 text-zinc-400'
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Dropdown Menu */}
+              {isGiftDropdownOpen && (
+                <div className="mt-1 pl-3 space-y-1 border-l-2 border-blue-100 ml-4 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {/* Subitem 1: Segment Wheel */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveNav('wheel');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2.5 text-left cursor-pointer ${
+                      activeNav === 'wheel'
+                        ? 'bg-[#0071e3] text-white shadow-xs font-bold'
+                        : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                    }`}
+                  >
+                    <Disc size={14} className={activeNav === 'wheel' ? 'text-white' : 'text-zinc-400'} />
+                    <span>Segment Wheel</span>
+                  </button>
+
+                  {/* Subitem 2: Gift Catalogue */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveNav('gifts');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-between text-left cursor-pointer ${
+                      activeNav === 'gifts'
+                        ? 'bg-[#0071e3] text-white shadow-xs font-bold'
+                        : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Gift size={14} className={activeNav === 'gifts' ? 'text-white' : 'text-zinc-400'} />
+                      <span>Gift Catalogue</span>
+                    </div>
+                    {giftsCount > 0 && (
+                      <span className={`text-[10px] font-bold ${activeNav === 'gifts' ? 'text-white/90' : 'text-zinc-400'}`}>
+                        {giftsCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Subitem 3: Redemption Logs */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveNav('redemptions');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2.5 text-left cursor-pointer ${
+                      activeNav === 'redemptions'
+                        ? 'bg-[#0071e3] text-white shadow-xs font-bold'
+                        : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                    }`}
+                  >
+                    <Ticket size={14} className={activeNav === 'redemptions' ? 'text-white' : 'text-zinc-400'} />
+                    <span>Redemption Logs</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Sidebar Footer */}
+          <div className="p-3.5 border-t border-zinc-100 bg-zinc-50/70 shrink-0 space-y-2">
+            <div className="flex items-center justify-between text-[11px] text-zinc-500 font-medium">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Firebase Live</span>
+              </span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Console</span>
+            </div>
+            {currentUser?.email && (
+              <div className="text-[11px] text-zinc-600 truncate font-semibold" title={currentUser.email}>
+                {currentUser.email}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* Scrollable Main Content Area */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 space-y-8 pb-24 min-w-0">
+          {activeNav === 'catalog' ? (
+            <>
+              {/* Metric Badges Banner */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
             <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
               <Clock size={14} className="text-amber-500" />
@@ -882,8 +1058,16 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
           )}
         </section>
           </>
+        ) : (
+          <AdminGiftManager 
+            activeSubTab={activeNav}
+            hideTopNav={true}
+            onShowToast={showToast}
+            onGiftsCountChange={(count) => setGiftsCount(count)}
+          />
         )}
       </main>
+    </div>
 
       {/* =========================================================================
           EDIT GAME DETAILS MODAL
