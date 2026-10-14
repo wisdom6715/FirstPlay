@@ -49,6 +49,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const [allGamesList, setAllGamesList] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [catalogFilter, setCatalogFilter] = useState('all'); // 'all' | 'under_review' | 'live' | 'disabled'
   const [toastMessage, setToastMessage] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(null);
 
@@ -418,11 +419,27 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     );
   }
 
-  const filteredGames = allGamesList.filter((g) =>
-    (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (g.creator || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (g.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const handleFilterCardClick = (type) => {
+    setCatalogFilter((prev) => (prev === type ? 'all' : type));
+  };
+
+  const filteredUnderReview = underReviewList.filter((item) =>
+    (item.title || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.creator || item.studioName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.category || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredGames = allGamesList
+    .filter((g) => {
+      if (catalogFilter === 'live') return Boolean(g.active);
+      if (catalogFilter === 'disabled') return !g.active;
+      return true;
+    })
+    .filter((g) =>
+      (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (g.creator || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (g.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   const activeCount = allGamesList.filter((g) => g.active).length;
   const disabledCount = allGamesList.length - activeCount;
@@ -686,242 +703,361 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
         <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 space-y-8 pb-24 min-w-0">
           {activeNav === 'catalog' ? (
             <>
-              {/* Metric Badges Banner */}
+              {/* Metric Badges Banner (Interactive Filter Cards) */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
-            <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
-              <Clock size={14} className="text-amber-500" />
-              <span>Under Review</span>
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-amber-600">
-              {underReviewList.length}
-            </div>
-            <span className="text-[11px] text-zinc-500 block font-medium">Pending admin approval</span>
-          </div>
+                {/* Filter 1: Under Review */}
+                <button
+                  type="button"
+                  onClick={() => handleFilterCardClick('under_review')}
+                  title={catalogFilter === 'under_review' ? 'Click to show all' : 'Filter by Under Review'}
+                  className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-1 transition-all duration-150 cursor-pointer text-left select-none relative overflow-hidden group ${
+                    catalogFilter === 'under_review'
+                      ? 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-400/60 shadow-md'
+                      : 'bg-white border-zinc-200/90 hover:border-amber-300 hover:bg-amber-50/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-600 group-hover:text-amber-800 flex items-center gap-1.5 transition-colors">
+                      <Clock size={14} className="text-amber-500" />
+                      <span>Under Review</span>
+                    </span>
+                    {catalogFilter === 'under_review' && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-amber-200/80 text-amber-900 text-[10px] font-black uppercase tracking-wider">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-amber-600">
+                    {underReviewList.length}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 block font-medium">Pending admin approval</span>
+                </button>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
-            <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
-              <CheckCircle2 size={14} className="text-emerald-500" />
-              <span>Live on Site</span>
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-600">
-              {activeCount}
-            </div>
-            <span className="text-[11px] text-zinc-500 block font-medium">Visible to players</span>
-          </div>
+                {/* Filter 2: Live on Site */}
+                <button
+                  type="button"
+                  onClick={() => handleFilterCardClick('live')}
+                  title={catalogFilter === 'live' ? 'Click to show all' : 'Filter by Live on Site'}
+                  className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-1 transition-all duration-150 cursor-pointer text-left select-none relative overflow-hidden group ${
+                    catalogFilter === 'live'
+                      ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-400/60 shadow-md'
+                      : 'bg-white border-zinc-200/90 hover:border-emerald-300 hover:bg-emerald-50/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-600 group-hover:text-emerald-800 flex items-center gap-1.5 transition-colors">
+                      <CheckCircle2 size={14} className="text-emerald-500" />
+                      <span>Live on Site</span>
+                    </span>
+                    {catalogFilter === 'live' && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-emerald-200/80 text-emerald-900 text-[10px] font-black uppercase tracking-wider">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-emerald-600">
+                    {activeCount}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 block font-medium">Visible to players</span>
+                </button>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
-            <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
-              <EyeOff size={14} className="text-zinc-400" />
-              <span>Hidden / Disabled</span>
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-zinc-800">
-              {disabledCount}
-            </div>
-            <span className="text-[11px] text-zinc-500 block font-medium">Toggled OFF</span>
-          </div>
+                {/* Filter 3: Hidden / Disabled */}
+                <button
+                  type="button"
+                  onClick={() => handleFilterCardClick('disabled')}
+                  title={catalogFilter === 'disabled' ? 'Click to show all' : 'Filter by Hidden / Disabled'}
+                  className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-1 transition-all duration-150 cursor-pointer text-left select-none relative overflow-hidden group ${
+                    catalogFilter === 'disabled'
+                      ? 'bg-zinc-100 border-zinc-400 ring-2 ring-zinc-400/60 shadow-md'
+                      : 'bg-white border-zinc-200/90 hover:border-zinc-400 hover:bg-zinc-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-600 group-hover:text-zinc-900 flex items-center gap-1.5 transition-colors">
+                      <EyeOff size={14} className="text-zinc-500" />
+                      <span>Hidden / Disabled</span>
+                    </span>
+                    {catalogFilter === 'disabled' && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 text-zinc-900 text-[10px] font-black uppercase tracking-wider">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-zinc-800">
+                    {disabledCount}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 block font-medium">Toggled OFF</span>
+                </button>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
-            <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
-              <Gamepad2 size={14} className="text-[#0071e3]" />
-              <span>Total Games</span>
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-zinc-900">
-              {allGamesList.length}
-            </div>
-            <span className="text-[11px] text-zinc-500 block font-medium">In Firebase catalog</span>
-          </div>
-        </div>
+                {/* Filter 4: Total Games (All) */}
+                <button
+                  type="button"
+                  onClick={() => handleFilterCardClick('all')}
+                  title="Show all games"
+                  className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-1 transition-all duration-150 cursor-pointer text-left select-none relative overflow-hidden group ${
+                    catalogFilter === 'all'
+                      ? 'bg-blue-50/90 border-[#0071e3] ring-2 ring-[#0071e3]/40 shadow-md'
+                      : 'bg-white border-zinc-200/90 hover:border-blue-300 hover:bg-blue-50/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-600 group-hover:text-[#0071e3] flex items-center gap-1.5 transition-colors">
+                      <Gamepad2 size={14} className="text-[#0071e3]" />
+                      <span>Total Games</span>
+                    </span>
+                    {catalogFilter === 'all' && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-blue-100 text-[#0071e3] text-[10px] font-black uppercase tracking-wider">
+                        All
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-zinc-900">
+                    {allGamesList.length}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 block font-medium">In Firebase catalog</span>
+                </button>
+              </div>
+
+              {/* Active Filter Indicator Bar */}
+              {catalogFilter !== 'all' && (
+                <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-white border border-zinc-200/90 shadow-xs flex-wrap gap-2 animate-in fade-in duration-150">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="font-bold text-zinc-500">Active Filter:</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase border ${
+                      catalogFilter === 'under_review'
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : catalogFilter === 'live'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-zinc-100 text-zinc-800 border-zinc-300'
+                    }`}>
+                      {catalogFilter === 'under_review' && `Under Review Submissions (${underReviewList.length})`}
+                      {catalogFilter === 'live' && `Live Games on Site (${activeCount})`}
+                      {catalogFilter === 'disabled' && `Hidden / Disabled Games (${disabledCount})`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCatalogFilter('all')}
+                    className="text-xs font-bold text-zinc-600 hover:text-zinc-900 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 transition cursor-pointer"
+                  >
+                    <X size={13} />
+                    <span>Clear Filter</span>
+                  </button>
+                </div>
+              )}
 
         {/* =========================================================================
             SECTION 1: UNDER REVIEW SUBMISSIONS (table: under_review)
             ========================================================================= */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900">
-                  Under Review Submissions ({underReviewList.length})
-                </h2>
+        {(catalogFilter === 'all' || catalogFilter === 'under_review') && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                  <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900">
+                    Under Review Submissions ({filteredUnderReview.length})
+                  </h2>
+                </div>
+                <p className="text-xs text-zinc-600 mt-0.5 leading-relaxed">
+                  New games uploaded via the submission hub. <strong>None of these appear in the app until an admin approves them.</strong>
+                </p>
               </div>
-              <p className="text-xs text-zinc-600 mt-0.5 leading-relaxed">
-                New games uploaded via the submission hub. <strong>None of these appear in the app until an admin approves them.</strong>
-              </p>
             </div>
-          </div>
 
-          {isLoadingData ? (
-            <div className="p-10 rounded-2xl bg-white border border-zinc-200 text-center shadow-xs">
-              <div className="w-6 h-6 border-2 border-zinc-300 border-t-[#0071e3] rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-zinc-500">Loading pending submissions...</p>
-            </div>
-          ) : underReviewList.length === 0 ? (
-            <div className="p-8 rounded-2xl bg-white border border-zinc-200/90 text-center space-y-2 shadow-xs">
-              <CheckCircle2 size={32} className="mx-auto text-emerald-500" />
-              <p className="text-sm font-bold text-zinc-800">Queue is Clear</p>
-              <p className="text-xs text-zinc-500">There are currently no games waiting under review.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {underReviewList.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-sm space-y-4 relative overflow-hidden"
-                >
-                  <div className="flex items-start gap-3.5">
-                    <img
-                      src={item.logo_url || '/icon.png'}
-                      alt={item.title}
-                      className="w-14 h-14 rounded-2xl object-cover bg-zinc-100 border border-zinc-200 shrink-0 shadow-xs"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-extrabold uppercase tracking-wider">
-                          UNDER REVIEW
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 text-[10px] font-semibold uppercase">
-                          {item.category || 'GAME'}
+            {isLoadingData ? (
+              <div className="p-10 rounded-2xl bg-white border border-zinc-200 text-center shadow-xs">
+                <div className="w-6 h-6 border-2 border-zinc-300 border-t-[#0071e3] rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-xs text-zinc-500">Loading pending submissions...</p>
+              </div>
+            ) : filteredUnderReview.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-white border border-zinc-200/90 text-center space-y-2 shadow-xs">
+                <CheckCircle2 size={32} className="mx-auto text-emerald-500" />
+                <p className="text-sm font-bold text-zinc-800">
+                  {searchQuery ? `No submissions found matching "${searchQuery}"` : 'Queue is Clear'}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {searchQuery ? 'Try clearing your search query.' : 'There are currently no games waiting under review.'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredUnderReview.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-sm space-y-4 relative overflow-hidden"
+                  >
+                    <div className="flex items-start gap-3.5">
+                      <img
+                        src={item.logo_url || '/icon.png'}
+                        alt={item.title}
+                        className="w-14 h-14 rounded-2xl object-cover bg-zinc-100 border border-zinc-200 shrink-0 shadow-xs"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-extrabold uppercase tracking-wider">
+                            UNDER REVIEW
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 text-[10px] font-semibold uppercase">
+                            {item.category || 'GAME'}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight truncate mt-1">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-zinc-600 truncate">
+                          Studio: <strong className="text-zinc-800">{item.creator}</strong>
+                        </p>
+                        {(item.email || item.publisher_email) && (
+                          <p className="text-xs text-zinc-500 truncate flex items-center gap-1.5 mt-0.5">
+                            <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                            <span className="font-mono text-[11px] text-zinc-700">{item.email || item.publisher_email}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Banner Preview if uploaded */}
+                    {item.banner_url && (
+                      <div className="w-full h-28 rounded-xl overflow-hidden border border-zinc-200 relative bg-zinc-100">
+                        <img
+                          src={item.banner_url}
+                          alt="Banner Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute bottom-1.5 left-2 px-2 py-0.5 rounded bg-black/75 backdrop-blur-md text-[9px] font-semibold text-white">
+                          Landscape Banner
                         </span>
                       </div>
-                      <h3 className="text-base font-bold text-zinc-900 tracking-tight truncate mt-1">
-                        {item.title}
-                      </h3>
-                      <p className="text-xs text-zinc-600 truncate">
-                        Studio: <strong className="text-zinc-800">{item.creator}</strong>
-                      </p>
-                      {(item.email || item.publisher_email) && (
-                        <p className="text-xs text-zinc-500 truncate flex items-center gap-1.5 mt-0.5">
-                          <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                          <span className="font-mono text-[11px] text-zinc-700">{item.email || item.publisher_email}</span>
+                    )}
+
+                    {/* Description / Metadata */}
+                    <div className="space-y-1.5 text-xs">
+                      {item.tagline && (
+                        <p className="text-zinc-700 font-semibold italic text-[11px]">
+                          "{item.tagline}"
                         </p>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Banner Preview if uploaded */}
-                  {item.banner_url && (
-                    <div className="w-full h-28 rounded-xl overflow-hidden border border-zinc-200 relative bg-zinc-100">
-                      <img
-                        src={item.banner_url}
-                        alt="Banner Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <span className="absolute bottom-1.5 left-2 px-2 py-0.5 rounded bg-black/75 backdrop-blur-md text-[9px] font-semibold text-white">
-                        Landscape Banner
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Description / Metadata */}
-                  <div className="space-y-1.5 text-xs">
-                    {item.tagline && (
-                      <p className="text-zinc-700 font-semibold italic text-[11px]">
-                        "{item.tagline}"
+                      <p className="text-zinc-600 line-clamp-2 leading-relaxed text-[11px]">
+                        {item.description}
                       </p>
-                    )}
-                    <p className="text-zinc-600 line-clamp-2 leading-relaxed text-[11px]">
-                      {item.description}
-                    </p>
-                    <div className="flex items-center gap-2 pt-1 text-[11px] text-zinc-500">
-                      <span className="font-semibold text-zinc-700">URL:</span>
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[#0071e3] hover:underline truncate flex items-center gap-1 font-mono"
+                      <div className="flex items-center gap-2 pt-1 text-[11px] text-zinc-500">
+                        <span className="font-semibold text-zinc-700">URL:</span>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#0071e3] hover:underline truncate flex items-center gap-1 font-mono"
+                        >
+                          <span className="truncate">{item.url}</span>
+                          <ExternalLink size={11} className="shrink-0" />
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Approve / Reject / Edit Actions */}
+                    <div className="pt-2 border-t border-zinc-100 flex items-center justify-end gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        disabled={actionInProgress === item.id}
+                        onClick={() => handleOpenEditModal(item, true)}
+                        className="px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
-                        <span className="truncate">{item.url}</span>
-                        <ExternalLink size={11} className="shrink-0" />
-                      </a>
+                        <Pencil size={12} />
+                        <span>Edit Details</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={actionInProgress === item.id}
+                        onClick={() => handleReject(item)}
+                        className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <X size={13} />
+                        <span>Reject & Delete</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={actionInProgress === item.id}
+                        onClick={() => handleApprove(item)}
+                        className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {actionInProgress === item.id ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Publishing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check size={14} className="stroke-[3]" />
+                            <span>Approve & Publish</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-
-                  {/* Approve / Reject / Edit Actions */}
-                  <div className="pt-2 border-t border-zinc-100 flex items-center justify-end gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      disabled={actionInProgress === item.id}
-                      onClick={() => handleOpenEditModal(item, true)}
-                      className="px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      <Pencil size={12} />
-                      <span>Edit Details</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={actionInProgress === item.id}
-                      onClick={() => handleReject(item)}
-                      className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      <X size={13} />
-                      <span>Reject & Delete</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={actionInProgress === item.id}
-                      onClick={() => handleApprove(item)}
-                      className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      {actionInProgress === item.id ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>Publishing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Check size={14} className="stroke-[3]" />
-                          <span>Approve & Publish</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* =========================================================================
             SECTION 2: ALL GAMES ON FIREBASE WITH TOGGLE SWITCHES & EDIT
             ========================================================================= */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900 flex items-center gap-2">
-                <Layers size={18} className="text-[#0071e3]" />
-                <span>All Games on Firebase</span>
-              </h2>
-              <p className="text-xs text-zinc-600 mt-0.5">
-                Each game has its own toggle switch. <strong>Turning a game OFF immediately removes it from the website.</strong>
-              </p>
+        {(catalogFilter === 'all' || catalogFilter === 'live' || catalogFilter === 'disabled') && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900 flex items-center gap-2">
+                  <Layers size={18} className="text-[#0071e3]" />
+                  <span>
+                    {catalogFilter === 'live'
+                      ? `Live Games on Site (${filteredGames.length})`
+                      : catalogFilter === 'disabled'
+                      ? `Hidden / Disabled Games (${filteredGames.length})`
+                      : `All Games on Firebase (${filteredGames.length})`}
+                  </span>
+                </h2>
+                <p className="text-xs text-zinc-600 mt-0.5">
+                  {catalogFilter === 'live'
+                    ? 'Displaying active games currently published and visible to players.'
+                    : catalogFilter === 'disabled'
+                    ? 'Displaying games toggled off or hidden from the public player catalog.'
+                    : 'Each game has its own toggle switch. Turning a game OFF immediately removes it from the website.'}
+                </p>
+              </div>
+
+              {/* Search Box */}
+              <div className="w-full sm:w-64 relative">
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search games or studio..."
+                  className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white border border-zinc-300 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
+                />
+              </div>
             </div>
 
-            {/* Search Box */}
-            <div className="w-full sm:w-64 relative">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search games or studio..."
-                className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white border border-zinc-300 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
-              />
-            </div>
-          </div>
-
-          {isLoadingData ? (
-            <div className="p-10 rounded-2xl bg-white border border-zinc-200 text-center shadow-xs">
-              <div className="w-6 h-6 border-2 border-zinc-300 border-t-[#0071e3] rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-zinc-500">Loading catalog games...</p>
-            </div>
-          ) : filteredGames.length === 0 ? (
-            <div className="p-8 rounded-2xl bg-white border border-zinc-200 text-center text-xs text-zinc-500 shadow-xs">
-              No games found matching "{searchQuery}".
-            </div>
-          ) : (
+            {isLoadingData ? (
+              <div className="p-10 rounded-2xl bg-white border border-zinc-200 text-center shadow-xs">
+                <div className="w-6 h-6 border-2 border-zinc-300 border-t-[#0071e3] rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-xs text-zinc-500">Loading catalog games...</p>
+              </div>
+            ) : filteredGames.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-white border border-zinc-200 text-center text-xs text-zinc-500 shadow-xs">
+                {searchQuery
+                  ? `No games found matching "${searchQuery}".`
+                  : catalogFilter === 'live'
+                  ? 'No live games currently active on site.'
+                  : catalogFilter === 'disabled'
+                  ? 'No disabled games found.'
+                  : 'No games found.'}
+              </div>
+            ) : (
             <div className="rounded-2xl border border-zinc-200/90 bg-white overflow-hidden shadow-sm">
               <div className="divide-y divide-zinc-100">
                 {filteredGames.map((game) => {
@@ -1044,7 +1180,8 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
             </div>
           )}
         </section>
-          </>
+      )}
+    </>
         ) : (
           <AdminGiftManager 
             activeSubTab={activeNav}
