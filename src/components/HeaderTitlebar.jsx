@@ -39,6 +39,8 @@ export default function HeaderTitlebar({
     search: 'Search',
     gifts: 'Rewards Wheel',
     redeem: 'Redeem Reward',
+    privacy: 'Privacy Policy',
+    terms: 'Terms of Service',
     settings: 'Settings',
     promote: 'Promote'
   };

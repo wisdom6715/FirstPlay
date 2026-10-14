@@ -171,20 +171,30 @@ export default function Footer({
           </p>
 
           <div className="flex items-center gap-6 order-1 sm:order-2">
-            <button
-              type="button"
-              onClick={onOpenPrivacyPolicy}
+            <a
+              href="/privacy"
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  onOpenPrivacyPolicy?.();
+                }
+              }}
               className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
             >
               Privacy Policy
-            </button>
-            <button
-              type="button"
-              onClick={onOpenTerms}
+            </a>
+            <a
+              href="/terms-of-service"
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  onOpenTerms?.();
+                }
+              }}
               className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
             >
               Terms of Service
-            </button>
+            </a>
             <button
               type="button"
               onClick={() => onNavigateTab?.('admin-dashboard')}

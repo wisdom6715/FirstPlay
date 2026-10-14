@@ -20,7 +20,8 @@ import { preloadService, PreloadState } from './services/preloadService';
 import { isLagosLife, openGameInNewTab } from './utils/gameUtils';
 import { triggerPwaInstall, detectUserOS } from './utils/pwaUtils';
 import PwaDownloadNotification from './components/PwaDownloadNotification';
-import LegalModal from './components/LegalModal';
+import PrivacyView from './views/PrivacyView';
+import TermsView from './views/TermsView';
 import { Minimize2, X, Check, Download, Info, ExternalLink } from 'lucide-react';
 import { setTabSEO, setGameSEO, updateCatalogItemListSEO } from './services/seoService';
 import { slugify } from './sitemap';
@@ -38,6 +39,8 @@ function getTabFromPath(pathname) {
   if (clean === 'favourite' || clean === 'favourites' || clean === 'favorites') return 'favourite';
   if (clean === 'gifts' || clean === 'gift' || clean === 'rewards' || clean === 'spin') return 'gifts';
   if (clean === 'redeem') return 'redeem';
+  if (clean === 'privacy' || clean === 'privacy-policy') return 'privacy';
+  if (clean === 'terms-of-service' || clean === 'terms' || clean === 'termsofservice') return 'terms';
   return 'discover';
 }
 
@@ -45,6 +48,8 @@ function getPathFromTab(tab) {
   if (tab === 'discover') return '/';
   if (tab === 'admin-auth') return '/admin/auth';
   if (tab === 'admin-dashboard') return '/admin/dashboard';
+  if (tab === 'privacy') return '/privacy';
+  if (tab === 'terms') return '/terms-of-service';
   return `/${tab}`;
 }
 
@@ -74,8 +79,6 @@ export default function App() {
     return true;
   });
   const [installToast, setInstallToast] = useState(null);
-  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
-  const [legalDocType, setLegalDocType] = useState('privacy');
   const [theme, setTheme] = useState(() => {
     const version = typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme_ver') : null;
     if (version !== 'v2_light') {
@@ -423,13 +426,11 @@ export default function App() {
   };
 
   const handleOpenPrivacyPolicy = () => {
-    setLegalDocType('privacy');
-    setIsLegalModalOpen(true);
+    navigateToTab('privacy');
   };
 
   const handleOpenTerms = () => {
-    setLegalDocType('terms');
-    setIsLegalModalOpen(true);
+    navigateToTab('terms');
   };
 
   // Dedicated Firebase Admin Authentication View (site/admin/auth)
@@ -628,6 +629,22 @@ export default function App() {
                     onNavigateTab={navigateToTab}
                   />
                 )}
+
+                {currentTab === 'privacy' && (
+                  <PrivacyView
+                    onNavigateTab={navigateToTab}
+                    onNavigateCategory={handleNavigateCategory}
+                    onNavigateSection={handleNavigateSection}
+                  />
+                )}
+
+                {currentTab === 'terms' && (
+                  <TermsView
+                    onNavigateTab={navigateToTab}
+                    onNavigateCategory={handleNavigateCategory}
+                    onNavigateSection={handleNavigateSection}
+                  />
+                )}
               </>
             )}
           </main>
@@ -754,14 +771,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* Legal Privacy Policy & Terms of Service Modal */}
-      <LegalModal
-        isOpen={isLegalModalOpen}
-        currentTheme={theme}
-        initialDoc={legalDocType}
-        onClose={() => setIsLegalModalOpen(false)}
-      />
     </div>
   );
 }
