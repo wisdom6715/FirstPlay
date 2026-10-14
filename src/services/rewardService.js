@@ -179,6 +179,55 @@ export const rewardService = {
   },
 
   /**
+   * Admin: Fetch all gift categories
+   */
+  async getGiftCategories() {
+    try {
+      const res = await fetch('/api/rewards/categories', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('[RewardService] Error getting gift categories:', err);
+      return { success: false, categories: [] };
+    }
+  },
+
+  /**
+   * Admin: Create or update a gift category
+   */
+  async createOrUpdateGiftCategory(categoryData) {
+    try {
+      const res = await fetch('/api/rewards/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryData)
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('[RewardService] Error saving category:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  /**
+   * Admin: Delete a gift category
+   */
+  async deleteGiftCategory(id) {
+    try {
+      const res = await fetch(`/api/rewards/categories?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('[RewardService] Error deleting category:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  /**
    * Admin: Fetch all gifts
    */
   async getAdminGifts(filters = {}) {
@@ -208,6 +257,22 @@ export const rewardService = {
       return await res.json();
     } catch (err) {
       console.error('[RewardService] Error saving gift:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  /**
+   * Admin: Delete a gift permanently
+   */
+  async deleteAdminGift(gift_id) {
+    try {
+      const res = await fetch(`/api/rewards/gifts?id=${encodeURIComponent(gift_id)}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      return await res.json();
+    } catch (err) {
+      console.error('[RewardService] Error deleting gift:', err);
       return { success: false, error: err.message };
     }
   },

@@ -38,13 +38,24 @@ export async function GET() {
         }
       }
 
-      // 2. Fallback: Check active gifts collection if administrator created individual gifts
+      // 2. Check active gift in 'gifts' collection
       const giftsQuery = query(collection(db, 'gifts'), where('is_active', '==', true));
       const giftsSnap = await getDocs(giftsQuery);
       
       if (!giftsSnap.empty) {
         const activeGifts = giftsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Map up to 6 gifts into the 6 segments, filling remainder with 0s
+        // If a gift has pre-calculated 6 segments (from 6 outcomes), use it directly
+        const configuredGift = activeGifts.find(g => Array.isArray(g.segments) && g.segments.length === 6);
+        if (configuredGift) {
+          return NextResponse.json({
+            success: true,
+            isConfigured: true,
+            segments: configuredGift.segments,
+            title: configuredGift.gift_name || configuredGift.name || 'FirstPlay Rewards Wheel'
+          });
+        }
+
+        // Otherwise map active gifts
         const segments = Array.from({ length: 6 }, (_, idx) => {
           const gift = activeGifts[idx];
           const colors = ['#0f172a', '#0066ff', '#ffffff', '#0f172a', '#0066ff', '#ffffff'];

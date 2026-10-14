@@ -6,10 +6,52 @@ import {
   addDoc, 
   doc, 
   updateDoc, 
+  deleteDoc,
+  setDoc,
   serverTimestamp, 
   query, 
   orderBy 
 } from 'firebase/firestore';
+
+const DEFAULT_SIX_ZEROS = [
+  { id: 'seg_1', amount: 0, amountLabel: '0 MB', subLabel: 'Try Again', giftType: 'data', unit: 'MB', color: '#0f172a', textColor: '#ffffff' },
+  { id: 'seg_2', amount: 0, amountLabel: '0 MB', subLabel: 'Try Again', giftType: 'data', unit: 'MB', color: '#0066ff', textColor: '#ffffff' },
+  { id: 'seg_3', amount: 0, amountLabel: '0 MB', subLabel: 'Try Again', giftType: 'data', unit: 'MB', color: '#ffffff', textColor: '#0a0a0f' },
+  { id: 'seg_4', amount: 0, amountLabel: '0 MB', subLabel: 'Try Again', giftType: 'data', unit: 'MB', color: '#0f172a', textColor: '#ffffff' },
+  { id: 'seg_5', amount: 0, amountLabel: '0 MB', subLabel: 'Try Again', giftType: 'data', unit: 'MB', color: '#0066ff', textColor: '#ffffff' },
+  { id: 'seg_6', amount: 0, amountLabel: '0 MB', subLabel: 'Try Again', giftType: 'data', unit: 'MB', color: '#ffffff', textColor: '#0a0a0f' }
+];
+
+/**
+ * Builds 6 segment objects from raw outcomes array.
+ * Invariant: Segment 1 (index 0) is always 0 reward.
+ */
+function buildSegmentsFromOutcomes(outcomes = [], giftName = 'Reward', giftType = 'data', unit = 'MB', network = null) {
+  const colors = ['#0f172a', '#0066ff', '#ffffff', '#0f172a', '#0066ff', '#ffffff'];
+  const textColors = ['#ffffff', '#ffffff', '#0a0a0f', '#ffffff', '#ffffff', '#0a0a0f'];
+
+  // Pad or trim to exactly 6 values, ensuring index 0 is 0
+  const cleanOutcomes = [
+    0,
+    Number(outcomes[1]) || 0,
+    Number(outcomes[2]) || 0,
+    Number(outcomes[3]) || 0,
+    Number(outcomes[4]) || 0,
+    Number(outcomes[5]) || 0
+  ];
+
+  return cleanOutcomes.map((amt, idx) => ({
+    id: `seg_${idx + 1}`,
+    amount: amt,
+    amountLabel: `${amt} ${unit || 'MB'}`,
+    subLabel: idx === 0 ? 'Try Again' : giftName,
+    giftType,
+    unit: unit || 'MB',
+    network: network || null,
+    color: colors[idx],
+    textColor: textColors[idx]
+  }));
+}
 
 /**
  * GET /api/rewards/gifts
@@ -18,7 +60,7 @@ import {
 export async function GET(request) {
   try {
     if (!isFirebaseLive || !db) {
-      return NextResponse.json({ success: true, gifts: [] });
+      return NextResponse.json({ success: true, gifts: [], currentGift: null });
     }
 
     const { searchParams } = new URL(request.url);
@@ -26,8 +68,13 @@ export async function GET(request) {
     const statusFilter = searchParams.get('status');
 
     const giftsColl = collection(db, 'gifts');
-    const q = query(giftsColl, orderBy('created_at', 'desc'));
-    const snap = await getDocs(q);
+    let snap;
+    try {
+      const q = query(giftsColl, orderBy('created_at', 'desc'));
+      snap = await getDocs(q);
+    } catch (orderErr) {
+      snap = await getDocs(giftsColl);
+    }
 
     let list = snap.docs.map((d) => ({
       id: d.id,
@@ -38,7 +85,7 @@ export async function GET(request) {
     }));
 
     if (typeFilter && typeFilter !== 'all') {
-      list = list.filter((g) => g.gift_type === typeFilter);
+      list = list.filter((g) => g.gift_type === typeFilter || g.category_slug === typeFilter);
     }
     if (statusFilter === 'active') {
       list = list.filter((g) => g.is_active === true);
@@ -46,7 +93,14 @@ export async function GET(request) {
       list = list.filter((g) => g.is_active === false);
     }
 
-    return NextResponse.json({ success: true, gifts: list });
+    // The most recently created active gift is the current spinner gift
+    const currentGift = list.find((g) => g.is_active !== false) || list[0] || null;
+
+    return NextResponse.json({ 
+      success: true, 
+      gifts: list,
+      currentGift
+    });
   } catch (err) {
     console.error('[API] GET /api/rewards/gifts error:', err);
     return NextResponse.json(
@@ -59,6 +113,7 @@ export async function GET(request) {
 /**
  * POST /api/rewards/gifts
  * Creates a new gift or updates an existing gift in the `gifts` collection.
+ * Also synchronizes the authoritative 6-segment wheel in Firebase.
  */
 export async function POST(request) {
   try {
@@ -66,17 +121,19 @@ export async function POST(request) {
     const { 
       gift_id, 
       gift_name, 
+      category_id,
+      category_name,
       gift_type, 
       description, 
-      quantity, 
       unit, 
       network, 
+      outcomes, // Array of 6 numbers: [0, val1, val2, val3, val4, val5]
       is_active 
     } = body || {};
 
-    if (!gift_name || !gift_type) {
+    if (!gift_name || !gift_name.trim()) {
       return NextResponse.json(
-        { success: false, error: 'Gift name and gift type are required.' },
+        { success: false, error: 'Gift name is required.' },
         { status: 400 }
       );
     }
@@ -88,40 +145,134 @@ export async function POST(request) {
       );
     }
 
+    const cleanUnit = (unit || 'MB').trim();
+    const cleanType = (gift_type || category_name || 'data').toLowerCase().trim();
+    const cleanName = gift_name.trim();
+
+    // Ensure array of 6 numbers where index 0 is permanently 0
+    let cleanOutcomes = [0, 0, 0, 0, 0, 0];
+    if (Array.isArray(outcomes)) {
+      cleanOutcomes = [
+        0, // Outcome 1 is permanently zero per user specification
+        Number(outcomes[1]) || 0,
+        Number(outcomes[2]) || 0,
+        Number(outcomes[3]) || 0,
+        Number(outcomes[4]) || 0,
+        Number(outcomes[5]) || 0
+      ];
+    }
+
+    const segments = buildSegmentsFromOutcomes(cleanOutcomes, cleanName, cleanType, cleanUnit, network);
+
     const docData = {
-      gift_name: gift_name.trim(),
-      gift_type: (gift_type || 'data').toLowerCase().trim(),
+      gift_name: cleanName,
+      name: cleanName,
+      category_id: category_id || null,
+      category_name: category_name || cleanType,
+      gift_type: cleanType,
+      unit: cleanUnit,
       description: (description || '').trim(),
-      quantity: Number(quantity) || 0,
-      unit: (unit || 'MB').trim(),
       network: network ? network.trim() : null,
+      outcomes: cleanOutcomes,
+      segments,
       is_active: is_active !== false,
       updated_at: serverTimestamp()
     };
 
+    let targetDocId = gift_id;
+
     if (gift_id) {
-      // Update existing gift (soft edit)
+      // Update existing gift
       const giftDocRef = doc(db, 'gifts', gift_id);
       await updateDoc(giftDocRef, docData);
-      return NextResponse.json({
-        success: true,
-        message: 'Gift updated successfully.',
-        gift: { id: gift_id, ...docData }
-      });
     } else {
-      // Create new gift
+      // Create new gift document
       docData.created_at = serverTimestamp();
       const newRef = await addDoc(collection(db, 'gifts'), docData);
-      return NextResponse.json({
-        success: true,
-        message: 'Gift created successfully.',
-        gift: { id: newRef.id, ...docData }
-      });
+      targetDocId = newRef.id;
     }
+
+    // Synchronize wheel_configs/current document for seamless backend resolution
+    try {
+      const wheelDocRef = doc(db, 'wheel_configs', 'current');
+      await setDoc(wheelDocRef, {
+        gift_id: targetDocId,
+        title: cleanName,
+        category: category_name || cleanType,
+        unit: cleanUnit,
+        segments,
+        outcomes: cleanOutcomes,
+        updated_at: serverTimestamp(),
+        is_active: is_active !== false
+      }, { merge: true });
+    } catch (wheelSyncErr) {
+      console.warn('[API] Could not sync wheel_configs/current:', wheelSyncErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Gift saved successfully and synchronized with the rewards wheel.',
+      gift: { id: targetDocId, ...docData }
+    });
   } catch (err) {
     console.error('[API] POST /api/rewards/gifts error:', err);
     return NextResponse.json(
       { success: false, error: err.message || 'Failed to save gift' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/rewards/gifts
+ * Deletes a gift from the `gifts` collection and resets the wheel outcomes to zero.
+ */
+export async function DELETE(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json(
+        { success: false, error: 'Gift ID is required.' },
+        { status: 400 }
+      );
+    }
+
+    if (!isFirebaseLive || !db) {
+      return NextResponse.json(
+        { success: false, error: 'Database service unavailable.' },
+        { status: 503 }
+      );
+    }
+
+    // 1. Delete from 'gifts'
+    const docRef = doc(db, 'gifts', id);
+    await deleteDoc(docRef);
+
+    // 2. Reset wheel_configs/current to 6 zero outcomes
+    try {
+      const wheelDocRef = doc(db, 'wheel_configs', 'current');
+      await setDoc(wheelDocRef, {
+        gift_id: null,
+        title: 'FirstPlay Rewards Wheel',
+        segments: DEFAULT_SIX_ZEROS,
+        outcomes: [0, 0, 0, 0, 0, 0],
+        updated_at: serverTimestamp(),
+        is_active: false
+      });
+    } catch (wheelErr) {
+      console.warn('[API] Warning resetting wheel_configs on delete:', wheelErr);
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Gift deleted successfully. Wheel has been reset.'
+    });
+  } catch (err) {
+    console.error('[API] DELETE /api/rewards/gifts error:', err);
+    return NextResponse.json(
+      { success: false, error: err.message || 'Failed to delete gift' },
       { status: 500 }
     );
   }

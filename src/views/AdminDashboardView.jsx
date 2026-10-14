@@ -29,7 +29,8 @@ import {
   ChevronDown,
   Disc,
   Ticket,
-  Menu
+  Menu,
+  Tag
 } from 'lucide-react';
 import appLogo from '../assets/icon.png';
 import AdminGiftManager from '../components/AdminGiftManager';
@@ -580,7 +581,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                 onClick={() => {
                   setIsGiftDropdownOpen((prev) => !prev);
                   if (activeNav === 'catalog') {
-                    setActiveNav('wheel');
+                    setActiveNav('categories');
                   }
                 }}
                 className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between text-left cursor-pointer group ${
@@ -597,13 +598,6 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                   <span>Gift Redemption</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {giftsCount > 0 && (
-                    <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-bold ${
-                      activeNav !== 'catalog' ? 'bg-blue-200/60 text-[#0071e3]' : 'bg-zinc-100 text-zinc-500'
-                    }`}>
-                      {giftsCount}
-                    </span>
-                  )}
                   <ChevronDown
                     size={15}
                     className={`transition-transform duration-200 ${
@@ -616,7 +610,24 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
               {/* Dropdown Menu */}
               {isGiftDropdownOpen && (
                 <div className="mt-1 pl-3 space-y-1 border-l-2 border-blue-100 ml-4 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
-                  {/* Subitem 1: Segment Wheel */}
+                  {/* Subitem 1: Gift Categories */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveNav('categories');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2.5 text-left cursor-pointer ${
+                      activeNav === 'categories'
+                        ? 'bg-[#0071e3] text-white shadow-xs font-bold'
+                        : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                    }`}
+                  >
+                    <Tag size={14} className={activeNav === 'categories' ? 'text-white' : 'text-zinc-400'} />
+                    <span>Gift Categories</span>
+                  </button>
+
+                  {/* Subitem 2: Wheel Gift */}
                   <button
                     type="button"
                     onClick={() => {
@@ -630,31 +641,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                     }`}
                   >
                     <Disc size={14} className={activeNav === 'wheel' ? 'text-white' : 'text-zinc-400'} />
-                    <span>Segment Wheel</span>
-                  </button>
-
-                  {/* Subitem 2: Gift Catalogue */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveNav('gifts');
-                      setIsMobileSidebarOpen(false);
-                    }}
-                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-between text-left cursor-pointer ${
-                      activeNav === 'gifts'
-                        ? 'bg-[#0071e3] text-white shadow-xs font-bold'
-                        : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Gift size={14} className={activeNav === 'gifts' ? 'text-white' : 'text-zinc-400'} />
-                      <span>Gift Catalogue</span>
-                    </div>
-                    {giftsCount > 0 && (
-                      <span className={`text-[10px] font-bold ${activeNav === 'gifts' ? 'text-white/90' : 'text-zinc-400'}`}>
-                        {giftsCount}
-                      </span>
-                    )}
+                    <span>Wheel Gift</span>
                   </button>
 
                   {/* Subitem 3: Redemption Logs */}

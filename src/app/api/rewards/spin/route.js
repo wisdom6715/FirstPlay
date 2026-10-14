@@ -52,6 +52,22 @@ export async function POST(request) {
           activeSegments = data.segments;
         }
       }
+
+      if (!activeSegments) {
+        // Fallback: check active gift in 'gifts' collection
+        try {
+          const giftsQuery = query(collection(db, 'gifts'), where('is_active', '==', true));
+          const giftsSnap = await getDocs(giftsQuery);
+          if (!giftsSnap.empty) {
+            const configuredGift = giftsSnap.docs.map(d => d.data()).find(g => Array.isArray(g.segments) && g.segments.length === 6);
+            if (configuredGift) {
+              activeSegments = configuredGift.segments;
+            }
+          }
+        } catch (giftCheckErr) {
+          console.warn('[Spin] Could not query gifts collection:', giftCheckErr);
+        }
+      }
     }
 
     // Default outcomes if wheel not yet configured by admin
