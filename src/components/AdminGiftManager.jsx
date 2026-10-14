@@ -16,15 +16,25 @@ import {
   Filter, 
   Copy, 
   Trophy, 
-  ShieldCheck,
   Lock,
   Tag,
   Layers,
   Sparkles,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Phone,
+  MessageSquare
 } from 'lucide-react';
 import { copyToClipboard } from '../utils/clipboardUtils';
+
+function getCleanWhatsAppNumber(rawNumber) {
+  if (!rawNumber) return '';
+  let digits = String(rawNumber).replace(/\D/g, '');
+  if (digits.startsWith('0') && digits.length === 11) {
+    digits = '234' + digits.slice(1);
+  }
+  return digits;
+}
 
 export default function AdminGiftManager({ 
   onShowToast, 
@@ -771,62 +781,97 @@ export default function AdminGiftManager({
                       <th className="py-3 px-4">Category</th>
                       <th className="py-3 px-4">Reward Amount</th>
                       <th className="py-3 px-4">User</th>
+                      <th className="py-3 px-4">Phone Number</th>
+                      <th className="py-3 px-4">WhatsApp</th>
                       <th className="py-3 px-4">Status</th>
                       <th className="py-3 px-4">Expires</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 font-medium">
-                    {redemptionsList.map((r) => (
-                      <tr key={r.id} className="hover:bg-zinc-50/70 transition">
-                        <td className="py-3 px-4 font-mono font-bold text-zinc-900">
-                          <button
-                            type="button"
-                            onClick={() => handleCopyCode(r.redemption_code)}
-                            className="inline-flex items-center gap-1.5 hover:text-[#0071e3] transition cursor-pointer"
-                          >
-                            <span>{r.redemption_code}</span>
-                            {copiedCode === r.redemption_code ? (
-                              <Check size={11} className="text-emerald-500" />
+                    {redemptionsList.map((r) => {
+                      const phoneNumber = r.phone || r.recipient_phone;
+                      const whatsappNum = r.whatsapp_number;
+                      const cleanWa = getCleanWhatsAppNumber(whatsappNum);
+
+                      return (
+                        <tr key={r.id} className="hover:bg-zinc-50/70 transition">
+                          <td className="py-3 px-4 font-mono font-bold text-zinc-900">
+                            <button
+                              type="button"
+                              onClick={() => handleCopyCode(r.redemption_code)}
+                              className="inline-flex items-center gap-1.5 hover:text-[#0071e3] transition cursor-pointer"
+                            >
+                              <span>{r.redemption_code}</span>
+                              {copiedCode === r.redemption_code ? (
+                                <Check size={11} className="text-emerald-500" />
+                              ) : (
+                                <Copy size={11} className="text-zinc-400" />
+                              )}
+                            </button>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                              r.category === 'tournament'
+                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                : 'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}>
+                              {r.category || 'gift'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 font-bold text-zinc-900">
+                            {r.category === 'tournament' 
+                              ? `₦${Number(r.amount || 0).toLocaleString()}` 
+                              : `${r.quantity || 0} ${r.unit || 'MB'}`}
+                          </td>
+                          <td className="py-3 px-4 text-zinc-600 truncate max-w-[120px]">
+                            {r.user_name || r.user_id || 'Player'}
+                          </td>
+                          <td className="py-3 px-4">
+                            {phoneNumber ? (
+                              <div className="flex items-center gap-1.5 font-mono text-zinc-900 font-bold text-xs">
+                                <Phone size={12} className="text-zinc-400 shrink-0" />
+                                <span>{phoneNumber}</span>
+                              </div>
                             ) : (
-                              <Copy size={11} className="text-zinc-400" />
+                              <span className="text-zinc-400 font-mono text-xs">—</span>
                             )}
-                          </button>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
-                            r.category === 'tournament'
-                              ? 'bg-amber-50 text-amber-700 border-amber-200'
-                              : 'bg-blue-50 text-blue-700 border-blue-200'
-                          }`}>
-                            {r.category || 'gift'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 font-bold text-zinc-900">
-                          {r.category === 'tournament' 
-                            ? `₦${Number(r.amount || 0).toLocaleString()}` 
-                            : `${r.quantity || 0} ${r.unit || 'MB'}`}
-                        </td>
-                        <td className="py-3 px-4 text-zinc-600 truncate max-w-[120px]">
-                          {r.user_name || r.user_id || 'Player'}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            r.status === 'completed'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : r.status === 'processing'
-                              ? 'bg-blue-100 text-blue-800'
-                              : r.status === 'expired'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-zinc-100 text-zinc-700'
-                          }`}>
-                            {r.status || 'pending'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">
-                          {r.expires_at ? new Date(r.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '24h'}
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                          <td className="py-3 px-4">
+                            {whatsappNum ? (
+                              <a
+                                href={`https://wa.me/${cleanWa}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-850 border border-emerald-200 font-mono text-[11px] font-bold transition cursor-pointer"
+                                title="Chat with user on WhatsApp"
+                              >
+                                <MessageSquare size={12} className="text-emerald-600 shrink-0" />
+                                <span>{whatsappNum}</span>
+                                <ExternalLink size={10} className="text-emerald-500 opacity-60" />
+                              </a>
+                            ) : (
+                              <span className="text-zinc-400 font-mono text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              r.status === 'completed'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : r.status === 'processing'
+                                ? 'bg-blue-100 text-blue-800'
+                                : r.status === 'expired'
+                                ? 'bg-red-100 text-red-800'
+                                : 'bg-zinc-100 text-zinc-700'
+                            }`}>
+                              {r.status || 'pending'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-zinc-500 font-mono text-[11px]">
+                            {r.expires_at ? new Date(r.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '24h'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

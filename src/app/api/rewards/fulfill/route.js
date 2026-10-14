@@ -141,13 +141,19 @@ export async function POST(request) {
           reference
         });
 
+        const cleanWhatsapp = (whatsappNumber || '').trim() || null;
+
         // Update final redemption record
         await updateDoc(redemptionRef, {
           status: fulfillmentResult.status || (fulfillmentResult.success ? 'completed' : 'failed'),
           fulfillment_provider: 'flutterwave_vtu',
           provider_reference: fulfillmentResult.reference || reference,
+          phone: cleanPhone,
+          recipient_phone: cleanPhone,
+          whatsapp_number: cleanWhatsapp,
           fulfillment_details: {
             recipient_phone: cleanPhone,
+            whatsapp_number: cleanWhatsapp,
             network: cleanNetwork,
             reward_type: giftType,
             quantity: authoritativeRecord.quantity,
@@ -157,6 +163,9 @@ export async function POST(request) {
         });
 
       } else {
+        const cleanWhatsapp = (whatsappNumber || '').trim() || null;
+        const cleanPhone = (phone || '').trim() || null;
+
         // Gift card or other manual/configured reward
         fulfillmentResult = {
           success: true,
@@ -168,6 +177,13 @@ export async function POST(request) {
           status: 'completed',
           fulfillment_provider: 'internal_gift_system',
           provider_reference: reference,
+          phone: cleanPhone,
+          recipient_phone: cleanPhone,
+          whatsapp_number: cleanWhatsapp,
+          fulfillment_details: {
+            phone: cleanPhone,
+            whatsapp_number: cleanWhatsapp
+          },
           completed_at: serverTimestamp()
         });
       }
@@ -178,6 +194,8 @@ export async function POST(request) {
         await updateDoc(redemptionRef, { status: 'failed', failure_reason: 'Bank account details missing' });
         return NextResponse.json({ success: false, error: 'Bank account number and bank selection required.' }, { status: 400 });
       }
+
+      const cleanWhatsapp = (whatsappNumber || '').trim() || null;
 
       fulfillmentResult = await flutterwaveUtils.transferTournamentPrize({
         accountNumber: accountNumber.trim(),
@@ -193,7 +211,10 @@ export async function POST(request) {
         status: fulfillmentResult.status || (fulfillmentResult.success ? 'completed' : 'failed'),
         fulfillment_provider: 'flutterwave_transfers',
         provider_reference: fulfillmentResult.reference || reference,
+        phone: cleanWhatsapp,
+        whatsapp_number: cleanWhatsapp,
         fulfillment_details: {
+          whatsapp_number: cleanWhatsapp,
           bank_code: bankCode.trim(),
           bank_name: bankName || bankCode,
           account_number: accountNumber.trim(),
