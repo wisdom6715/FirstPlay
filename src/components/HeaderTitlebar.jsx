@@ -37,6 +37,8 @@ export default function HeaderTitlebar({
     categories: 'Category',
     favourite: 'Favourite',
     search: 'Search',
+    gifts: 'Rewards Wheel',
+    redeem: 'Redeem Reward',
     settings: 'Settings',
     promote: 'Promote'
   };

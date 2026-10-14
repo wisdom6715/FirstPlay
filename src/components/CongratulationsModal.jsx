@@ -11,7 +11,8 @@ import { copyToClipboard } from '../utils/clipboardUtils';
 
 export default function CongratulationsModal({
   wonItem,
-  onClose
+  onClose,
+  onRedeem
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -19,8 +20,8 @@ export default function CongratulationsModal({
 
   const isZero = wonItem.amount === 0 || wonItem.amount_mb === 0;
   const giftName = wonItem.gift || `${wonItem.amountLabel || wonItem.amount} ${wonItem.subLabel || 'Data'}`;
-  const code = wonItem.code || '';
-  const redeemUrl = wonItem.redeem_url || `https://firstplay.fun/redeem?code=${code}`;
+  const code = wonItem.code || wonItem.redemptionCode || '';
+  const redeemUrl = wonItem.redeem_url || `/redeem?code=${code}`;
 
   const handleCopy = async () => {
     if (!code) return;
@@ -31,12 +32,14 @@ export default function CongratulationsModal({
     }
   };
 
-  const handleOpenWebsite = () => {
-    if (!redeemUrl) return;
-    if (window.firstPlayAPI?.openExternal) {
-      window.firstPlayAPI.openExternal(redeemUrl);
-    } else {
-      window.open(redeemUrl, '_blank');
+  const handleRedeemAction = () => {
+    if (onRedeem) {
+      onRedeem(code);
+      onClose?.();
+      return;
+    }
+    if (typeof window !== 'undefined') {
+      window.location.href = `/redeem?code=${encodeURIComponent(code)}`;
     }
   };
 
@@ -144,10 +147,10 @@ export default function CongratulationsModal({
             <div className="space-y-2 pt-1">
               <button
                 type="button"
-                onClick={handleOpenWebsite}
+                onClick={handleRedeemAction}
                 className="w-full h-11 rounded-full bg-[#0066ff] hover:bg-[#0055dd] text-white font-bold text-xs tracking-wide transition-all shadow-lg shadow-blue-600/30 flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
               >
-                <span>Redeem Gift on Website</span>
+                <span>Redeem Reward Now</span>
                 <ExternalLink size={13} />
               </button>
 

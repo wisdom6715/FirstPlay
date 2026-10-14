@@ -11,6 +11,8 @@ import FavouritesView from './views/FavouritesView';
 import LibraryView from './views/LibraryView';
 import SettingsView from './views/SettingsView';
 import PromoteView from './views/PromoteView';
+import GiftsView from './views/GiftsView';
+import RedeemView from './views/RedeemView';
 import AdminAuthView from './views/AdminAuthView';
 import AdminDashboardView from './views/AdminDashboardView';
 import { catalogService } from './services/catalogService';
@@ -34,6 +36,8 @@ function getTabFromPath(pathname) {
   if (clean === 'search') return 'search';
   if (clean === 'category' || clean === 'categories') return 'category';
   if (clean === 'favourite' || clean === 'favourites' || clean === 'favorites') return 'favourite';
+  if (clean === 'gifts' || clean === 'gift' || clean === 'rewards' || clean === 'spin') return 'gifts';
+  if (clean === 'redeem') return 'redeem';
   return 'discover';
 }
 
@@ -84,10 +88,24 @@ export default function App() {
     return (typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme') : null) || 'light';
   });
 
-  const navigateToTab = (tab, push = true) => {
+  const [redeemInitialCode, setRedeemInitialCode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      return searchParams.get('code') || '';
+    }
+    return '';
+  });
+
+  const navigateToTab = (tab, push = true, extraParams = null) => {
+    if (extraParams?.code) {
+      setRedeemInitialCode(extraParams.code);
+    }
     setCurrentTab(tab);
     if (typeof window !== 'undefined') {
-      const targetPath = getPathFromTab(tab);
+      let targetPath = getPathFromTab(tab);
+      if (tab === 'redeem' && extraParams?.code) {
+        targetPath += `?code=${encodeURIComponent(extraParams.code)}`;
+      }
       if (window.location.pathname !== targetPath) {
         if (push) {
           window.history.pushState({ tab }, '', targetPath);
@@ -583,6 +601,21 @@ export default function App() {
                   <SettingsView
                     currentTheme={theme}
                     onThemeChange={setTheme}
+                  />
+                )}
+
+                {currentTab === 'gifts' && (
+                  <GiftsView
+                    onNavigateTab={(tab, push, params) => navigateToTab(tab, push, params)}
+                    onNavigateGames={() => navigateToTab('discover')}
+                  />
+                )}
+
+                {currentTab === 'redeem' && (
+                  <RedeemView
+                    initialCode={redeemInitialCode}
+                    onNavigateHome={() => navigateToTab('discover')}
+                    onNavigateWheel={() => navigateToTab('gifts')}
                   />
                 )}
 

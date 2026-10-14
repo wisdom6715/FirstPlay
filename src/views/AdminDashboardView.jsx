@@ -24,15 +24,17 @@ import {
   Image as ImageIcon,
   FileText,
   Globe,
-  Mail
+  Mail,
+  Gift
 } from 'lucide-react';
 import appLogo from '../assets/icon.png';
+import AdminGiftManager from '../components/AdminGiftManager';
 
 export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
 
-  // Data states
+  const [adminTab, setAdminTab] = useState('catalog');
   const [underReviewList, setUnderReviewList] = useState([]);
   const [allGamesList, setAllGamesList] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -488,8 +490,41 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
       {/* Main Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-9 pb-24">
         
-        {/* Metric Badges Banner */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        {/* Admin Navigation Pills */}
+        <div className="flex items-center gap-2.5 border-b border-zinc-200/90 pb-4 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setAdminTab('catalog')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              adminTab === 'catalog'
+                ? 'bg-[#0071e3] text-white shadow-xs'
+                : 'bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200'
+            }`}
+          >
+            <Gamepad2 size={15} />
+            <span>Game Catalog & Approvals ({underReviewList.length + allGamesList.length})</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAdminTab('rewards')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              adminTab === 'rewards'
+                ? 'bg-[#0071e3] text-white shadow-xs'
+                : 'bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200'
+            }`}
+          >
+            <Gift size={15} />
+            <span>Gifts, Wheel & Redemptions</span>
+          </button>
+        </div>
+
+        {adminTab === 'rewards' ? (
+          <AdminGiftManager onShowToast={showToast} />
+        ) : (
+          <>
+            {/* Metric Badges Banner */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
           <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
             <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
               <Clock size={14} className="text-amber-500" />
@@ -846,6 +881,8 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
             </div>
           )}
         </section>
+          </>
+        )}
       </main>
 
       {/* =========================================================================

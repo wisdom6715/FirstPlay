@@ -1,63 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SpinWheel from '../components/SpinWheel';
 import CongratulationsModal from '../components/CongratulationsModal';
-import { 
-  spinGiftService, 
-  calculateSpinOutcome, 
-  WHEEL_SEGMENTS 
-} from '../services/spinGiftService';
+import { rewardService } from '../services/rewardService';
 import { 
   RotateCw, 
   Clock, 
   Gift, 
   Copy, 
   Check, 
-  ExternalLink 
+  ExternalLink,
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 import { copyToClipboard } from '../utils/clipboardUtils';
 
-export default function GiftsView({ onNavigateGames }) {
+export default function GiftsView({ onNavigateTab, onNavigateGames }) {
+  const [segments, setSegments] = useState([]);
+  const [isLoadingWheel, setIsLoadingWheel] = useState(true);
   const [isSpinning, setIsSpinning] = useState(false);
   const [targetOutcome, setTargetOutcome] = useState(null);
   const [wonModalItem, setWonModalItem] = useState(null);
-  const [myGifts, setMyGifts] = useState(() => spinGiftService.getLocalWonGifts());
-  const [playtimeSeconds, setPlaytimeSeconds] = useState(() => spinGiftService.getPlaytimeSeconds());
+  const [myGifts, setMyGifts] = useState(() => rewardService.getLocalWonGifts());
+  const [playtimeSeconds, setPlaytimeSeconds] = useState(() => rewardService.getPlaytimeSeconds());
   const [copiedCode, setCopiedCode] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
 
   // Playtime requirement: 2 hours = 7200 seconds
   const REQUIRED_PLAYTIME_SECONDS = 7200;
   const isPlaytimeUnlocked = playtimeSeconds >= REQUIRED_PLAYTIME_SECONDS;
 
-  // Sync gifts when needed
+  // Load active 6-segment configuration on mount
+  useEffect(() => {
+    async function fetchWheel() {
+      setIsLoadingWheel(true);
+      try {
+        const res = await rewardService.getWheelConfig();
+        if (res?.segments && Array.isArray(res.segments) && res.segments.length === 6) {
+          setSegments(res.segments);
+        }
+      } catch (err) {
+        console.error('[GiftsView] Failed to load wheel:', err);
+      } finally {
+        setIsLoadingWheel(false);
+      }
+    }
+    fetchWheel();
+  }, []);
+
   const refreshGifts = () => {
-    setMyGifts(spinGiftService.getLocalWonGifts());
+    setMyGifts(rewardService.getLocalWonGifts());
   };
 
-  const handleStartSpin = () => {
+  const handleStartSpin = async () => {
     if (isSpinning) return;
-
-    // Pick outcome with the strict requested probability:
-    // 30% for 0GB, 50% for 500MB-2GB, 20% for 3GB+
-    const outcome = calculateSpinOutcome();
+    setErrorMessage(null);
     setIsSpinning(true);
-    setTargetOutcome(outcome);
+
+    try {
+      // Authoritative spin resolution on backend
+      const res = await rewardService.executeSpin('player_session', 'Player');
+      
+      if (!res.success) {
+        setErrorMessage(res.error || 'Failed to spin wheel. Please try again.');
+        setIsSpinning(false);
+        return;
+      }
+
+      // Pass outcome to SpinWheel component to animate
+      setTargetOutcome({
+        segmentIndex: res.segmentIndex,
+        segment: res.segment,
+        reward: res.reward
+      });
+    } catch (err) {
+      console.error('[GiftsView] Spin error:', err);
+      setErrorMessage('Network error while spinning. Please try again.');
+      setIsSpinning(false);
+    }
   };
 
-  const handleSpinEnd = async (wonSegment) => {
+  const handleSpinEnd = (wonSegment) => {
     setIsSpinning(false);
+    const currentTarget = targetOutcome;
     setTargetOutcome(null);
 
-    if (wonSegment.amount > 0) {
-      // Record won gift in Firebase collection 'spin_gift'
-      const savedGift = await spinGiftService.recordWonGift(wonSegment);
-      refreshGifts();
-      setWonModalItem(savedGift || wonSegment);
+    refreshGifts();
+
+    if (currentTarget?.reward) {
+      // Won positive reward with generated 24h code
+      setWonModalItem({
+        ...wonSegment,
+        code: currentTarget.reward.redemptionCode,
+        redemptionCode: currentTarget.reward.redemptionCode,
+        gift: `${currentTarget.reward.quantity} ${currentTarget.reward.unit || 'MB'}`
+      });
     } else {
-      // 0 GB
+      // 0 MB or zero outcome
       setWonModalItem(wonSegment);
     }
-
-    spinGiftService.recordSpinTime();
   };
 
   const handleCopyCode = async (code) => {
@@ -69,53 +109,71 @@ export default function GiftsView({ onNavigateGames }) {
     }
   };
 
-  const handleOpenRedeem = (item) => {
-    const url = item.redeem_url || `https://firstplay.fun/redeem?code=${item.code}`;
-    if (window.firstPlayAPI?.openExternal) {
-      window.firstPlayAPI.openExternal(url);
-    } else {
-      window.open(url, '_blank');
+  const handleRedeemClick = (code) => {
+    if (onNavigateTab) {
+      onNavigateTab('redeem', true, { code });
+    } else if (typeof window !== 'undefined') {
+      window.location.href = `/redeem?code=${encodeURIComponent(code)}`;
     }
   };
 
   const handleGrantTestPlaytime = () => {
-    const updated = spinGiftService.addPlaytimeSeconds(REQUIRED_PLAYTIME_SECONDS);
+    const updated = rewardService.addPlaytimeSeconds(REQUIRED_PLAYTIME_SECONDS);
     setPlaytimeSeconds(updated);
   };
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 lg:px-12 py-6 space-y-8 select-none">
+    <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-12 py-8 space-y-8 select-none">
       
-      {/* Header matching media_1791543505455.png */}
-      <div className="text-center max-w-xl mx-auto space-y-1">
+      {/* Header */}
+      <div className="text-center max-w-xl mx-auto space-y-2">
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-[#0a84ff] text-xs font-semibold">
+          <Sparkles size={13} />
+          <span>Dynamic Spin & Win</span>
+        </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-          Gifts & Rewards
+          Rewards Wheel
         </h1>
         <p className="text-xs sm:text-sm text-zinc-400 font-medium">
-          Play any game for 2h to unlock spin
+          Play any game for 2 hours to unlock your daily lucky spin
         </p>
       </div>
 
-      {/* Spinning Wheel Section */}
-      <div className="flex flex-col items-center justify-center">
-        <SpinWheel
-          isSpinning={isSpinning}
-          targetOutcome={targetOutcome}
-          onSpinStart={handleStartSpin}
-          onSpinEnd={handleSpinEnd}
-          disabled={isSpinning}
-        />
+      {errorMessage && (
+        <div className="max-w-md mx-auto p-3.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs flex items-center gap-2.5">
+          <AlertCircle size={16} className="shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
 
-        {/* Action Button matching media_1791543505455.png */}
-        <div className="w-full max-w-md mt-6 px-4 flex flex-col items-center gap-2.5">
+      {/* Six-Segment Wheel Section */}
+      <div className="flex flex-col items-center justify-center">
+        {isLoadingWheel ? (
+          <div className="w-[340px] h-[340px] flex flex-col items-center justify-center gap-3">
+            <div className="w-8 h-8 border-2 border-[#0066ff] border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-zinc-400 font-mono">Loading rewards...</p>
+          </div>
+        ) : (
+          <SpinWheel
+            segments={segments}
+            isSpinning={isSpinning}
+            targetOutcome={targetOutcome}
+            onSpinStart={handleStartSpin}
+            onSpinEnd={handleSpinEnd}
+            disabled={isSpinning}
+          />
+        )}
+
+        {/* Action Button & Gameplay Progress */}
+        <div className="w-full max-w-md mt-6 px-4 flex flex-col items-center gap-3">
           <button
             type="button"
             onClick={handleStartSpin}
-            disabled={isSpinning}
+            disabled={isSpinning || isLoadingWheel}
             className={`w-full h-12 rounded-2xl flex items-center justify-center gap-2.5 font-bold text-xs sm:text-sm transition-all shadow-lg cursor-pointer ${
-              isSpinning
-                ? 'bg-zinc-700/60 text-zinc-400 cursor-not-allowed'
-                : 'bg-[#52525b]/80 hover:bg-[#60606a] text-white active:scale-[0.99] border border-white/10'
+              isSpinning || isLoadingWheel
+                ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-white/5'
+                : 'bg-[#0066ff] hover:bg-[#0055dd] text-white active:scale-[0.99] border border-blue-400/30 shadow-blue-600/30'
             }`}
           >
             <RotateCw size={16} className={isSpinning ? 'animate-spin' : ''} />
@@ -123,15 +181,15 @@ export default function GiftsView({ onNavigateGames }) {
               {isSpinning 
                 ? 'Spinning the Wheel...' 
                 : isPlaytimeUnlocked 
-                ? 'Spin Wheel (Unlocked!)' 
-                : 'Play any game for 2h to unlock'}
+                ? 'Spin Now!' 
+                : 'Play 2h to Unlock Spin'}
             </span>
           </button>
 
-          {/* Playtime Progress & Quick Spin Pass */}
+          {/* Playtime Progress & Instant Spin Unlock */}
           <div className="flex items-center justify-between w-full text-[11px] text-zinc-400 px-1">
-            <span className="flex items-center gap-1">
-              <Clock size={12} className="text-[#0a84ff]" />
+            <span className="flex items-center gap-1.5">
+              <Clock size={13} className="text-[#0a84ff]" />
               <span>
                 Playtime: {Math.floor(playtimeSeconds / 3600)}h {Math.floor((playtimeSeconds % 3600) / 60)}m / 2h
               </span>
@@ -141,7 +199,7 @@ export default function GiftsView({ onNavigateGames }) {
               <button
                 type="button"
                 onClick={handleGrantTestPlaytime}
-                className="text-[#0a84ff] hover:text-blue-300 transition-colors underline cursor-pointer text-[10px]"
+                className="text-[#0a84ff] hover:text-blue-300 transition-colors underline cursor-pointer text-[11px] font-semibold"
                 title="Instant test pass for gameplay unlocked status"
               >
                 Claim instant spin pass
@@ -160,21 +218,21 @@ export default function GiftsView({ onNavigateGames }) {
               My Won Gifts ({myGifts.length})
             </h3>
           </div>
-          <span className="text-[11px] text-zinc-500">Rewards History</span>
+          <span className="text-[11px] text-zinc-500 font-mono">24h Expiry</span>
         </div>
 
         {myGifts.length === 0 ? (
           <div className="p-6 rounded-2xl bg-[#16161a]/60 border border-white/[0.06] text-center space-y-1">
-            <p className="text-xs font-medium text-zinc-300">No reward vouchers won yet</p>
-            <p className="text-[11px] text-zinc-500">Spin the wheel to win instant data gifts and vouchers.</p>
+            <p className="text-xs font-semibold text-zinc-300">No rewards won yet</p>
+            <p className="text-[11px] text-zinc-500">Spin the wheel to win instant mobile data and gifts.</p>
           </div>
         ) : (
           <div className="space-y-2.5">
             {myGifts.map((item, idx) => {
-              const isUsed = item.status === 'used';
+              const isUsed = item.status === 'used' || item.isUsed === true;
               return (
                 <div
-                  key={item.id || `gift-${idx}`}
+                  key={item.id || item.code || `gift-${idx}`}
                   className="p-3.5 rounded-2xl bg-[#16161a] border border-white/[0.08] flex items-center justify-between gap-3 text-xs"
                 >
                   <div className="flex items-center gap-3 min-w-0">
@@ -185,13 +243,13 @@ export default function GiftsView({ onNavigateGames }) {
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white truncate">{item.gift}</span>
+                        <span className="font-bold text-white truncate">{item.gift || item.amountLabel}</span>
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                           isUsed 
                             ? 'bg-zinc-800 text-zinc-400' 
                             : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                         }`}>
-                          {isUsed ? 'Already Redeemed' : 'Active'}
+                          {isUsed ? 'Redeemed' : 'Active (Valid 24h)'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-1">
@@ -224,8 +282,8 @@ export default function GiftsView({ onNavigateGames }) {
                     {!isUsed && (
                       <button
                         type="button"
-                        onClick={() => handleOpenRedeem(item)}
-                        className="px-3.5 py-2 rounded-xl bg-[#0066ff] hover:bg-[#0055dd] text-white font-medium text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-blue-500/30"
+                        onClick={() => handleRedeemClick(item.code)}
+                        className="px-3.5 py-2 rounded-xl bg-[#0066ff] hover:bg-[#0055dd] text-white font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm shadow-blue-500/30"
                       >
                         <span>Redeem</span>
                         <ExternalLink size={12} />
@@ -247,6 +305,10 @@ export default function GiftsView({ onNavigateGames }) {
           onClose={() => {
             setWonModalItem(null);
             refreshGifts();
+          }}
+          onRedeem={(code) => {
+            setWonModalItem(null);
+            handleRedeemClick(code);
           }}
         />
       )}
