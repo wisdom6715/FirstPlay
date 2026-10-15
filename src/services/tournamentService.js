@@ -97,6 +97,10 @@ export async function createTournamentOnAdmin({
     throw new Error('Firebase connection not available');
   }
 
+  if (!gameId || typeof gameId !== 'string' || !gameId.trim()) {
+    throw new Error('A valid pre-existing game_id from an approved game is required.');
+  }
+
   const tournamentsRef = collection(db, 'tournaments');
   const tournamentDoc = doc(tournamentsRef);
   const tournamentId = tournamentDoc.id;

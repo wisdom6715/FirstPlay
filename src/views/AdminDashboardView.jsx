@@ -974,6 +974,9 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                           <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 text-[10px] font-semibold uppercase">
                             {item.category || 'GAME'}
                           </span>
+                          <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-mono font-bold" title={`Permanent Game ID: ${item.game_id || item.id}`}>
+                            ID: {item.game_id || item.id}
+                          </span>
                         </div>
                         <h3 className="text-base font-bold text-zinc-900 tracking-tight truncate mt-1">
                           {item.title}
@@ -1158,6 +1161,9 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                             </h3>
                             <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-700">
                               {game.category || 'game'}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-[#0071e3] border border-blue-200" title={`Game ID: ${game.game_id || game.id}`}>
+                              ID: {game.game_id || game.id}
                             </span>
                           </div>
                           <p className="text-xs text-zinc-500 truncate mt-0.5">

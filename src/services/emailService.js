@@ -183,7 +183,7 @@ export async function sendEmail({ to, subject, html, text }) {
  * 1. Under Review Email
  * Triggered immediately when publisher uploads a game on the Promote/Upload screen
  */
-export async function sendUnderReviewEmail({ to, gameTitle, studioName, gameUrl }) {
+export async function sendUnderReviewEmail({ to, gameTitle, studioName, gameUrl, gameId }) {
   const title = `We've received your submission: "${gameTitle}" is Under Review`;
   const subject = `🎮 "${gameTitle}" is Under Review — FirstPlay`;
 
@@ -196,6 +196,7 @@ export async function sendUnderReviewEmail({ to, gameTitle, studioName, gameUrl 
     introText: `Thank you for submitting your game to FirstPlay. To maintain optimal performance, safety, and an authentic experience for African web gamers, all new entries are queued for review before going live.`,
     details: [
       { label: 'Game Title', value: gameTitle },
+      ...(gameId ? [{ label: 'Game ID', value: gameId }] : []),
       { label: 'Studio / Creator', value: studioName || 'Independent Studio' },
       { label: 'Launch URL', value: gameUrl, isLink: true },
       { label: 'Queue Status', value: 'Under Review by Admin' }
@@ -205,7 +206,7 @@ export async function sendUnderReviewEmail({ to, gameTitle, studioName, gameUrl 
     footerNote: '<strong>What happens next:</strong> Our moderation team will test responsiveness and compatibility. Once approved, you will receive a confirmation email and your game will appear live in the FirstPlay catalog immediately.'
   });
 
-  const text = `Hi ${studioName || 'Developer'},\n\nWe have received your game submission "${gameTitle}" on FirstPlay. It is now queued under review.\n\nGame Title: ${gameTitle}\nStudio: ${studioName}\nURL: ${gameUrl}\n\nOur moderation team reviews submissions for mobile/browser compatibility. You will receive an email as soon as it is approved.\n\nFirstPlay Team\nhttps://firstplay.app`;
+  const text = `Hi ${studioName || 'Developer'},\n\nWe have received your game submission "${gameTitle}" on FirstPlay. It is now queued under review.\n\nGame Title: ${gameTitle}${gameId ? `\nGame ID: ${gameId}` : ''}\nStudio: ${studioName}\nURL: ${gameUrl}\n\nOur moderation team reviews submissions for mobile/browser compatibility. You will receive an email as soon as it is approved.\n\nFirstPlay Team\nhttps://firstplay.app`;
 
   return sendEmail({ to, subject, html, text });
 }
@@ -228,6 +229,7 @@ export async function sendApprovedEmail({ to, gameTitle, studioName, gameUrl, ga
     introText: `Great news! <strong>${escapeHtml(gameTitle)}</strong> by <strong>${escapeHtml(studioName || 'Independent Studio')}</strong> has passed our quality review and has been officially approved. Players across Nigeria and Africa can discover and play your game instantly in their browser with zero installation.`,
     details: [
       { label: 'Game Title', value: gameTitle },
+      ...(gameId ? [{ label: 'Game ID', value: gameId }] : []),
       { label: 'Studio / Creator', value: studioName || 'Independent Studio' },
       { label: 'Direct Play Link', value: playUrl, isLink: true },
       { label: 'Platform Status', value: 'Live on FirstPlay Catalog' }

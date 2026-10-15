@@ -8,6 +8,7 @@ import {
   doc, 
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   serverTimestamp
@@ -110,6 +111,7 @@ export function normalizeAppDoc(docId, data) {
 
   return {
     id: docId,
+    game_id: data.game_id || data.id || docId,
     name,
     full_name: data.full_name ? `${name} — ${data.full_name}` : name,
     category,
@@ -492,6 +494,7 @@ export const catalogService = {
         const data = d.data();
         items.push({
           id: d.id,
+          game_id: data.game_id || data.id || d.id,
           name: data.name || data.game_name || data.title || 'Untitled Submission',
           title: data.title || data.name || data.game_name || 'Untitled Submission',
           category: data.category || 'game',
@@ -601,14 +604,21 @@ export const catalogService = {
     return fieldsToUpdate;
   },
 
-  // Approve a submission from 'under_review' -> write to 'apps' and delete from 'under_review'
+  // Approve a submission from 'under_review' -> write to 'apps' preserving the pre-generated game_id and delete from 'under_review'
   async approveUnderReviewGame(submission) {
     if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
     const category = submission.category || 'game';
     const name = submission.name || submission.title;
 
-    // 1. Write approved record to 'apps' collection
-    const newDoc = await addDoc(collection(db, 'apps'), {
+    // Use the existing game_id generated during game submission
+    const gameId = submission.game_id || submission.id;
+    const appDocRef = gameId ? doc(db, 'apps', gameId) : doc(collection(db, 'apps'));
+    const resolvedGameId = appDocRef.id;
+
+    // 1. Write approved record to 'apps' collection with the exact pre-assigned game_id
+    await setDoc(appDocRef, {
+      game_id: resolvedGameId,
+      id: resolvedGameId,
       category,
       name,
       game_name: category === 'game' ? name : null,
@@ -635,7 +645,7 @@ export const catalogService = {
       created_at: serverTimestamp()
     });
 
-    // 2. If it has a banner, also create a promotion_banner
+    // 2. If it has a banner, also create a promotion_banner linking to the game_id
     if (submission.banner_url) {
       try {
         await addDoc(collection(db, 'promotion_banner'), {
@@ -644,6 +654,7 @@ export const catalogService = {
           badge_text: 'GAME SHOWCASE',
           image_url: submission.banner_url,
           target_url: submission.url,
+          game_id: resolvedGameId,
           placement: 'all',
           active: true,
           open_in_app: Boolean(submission.open_in_app),
@@ -663,7 +674,7 @@ export const catalogService = {
     localStorage.removeItem(STORAGE_KEY_LISTINGS);
     localStorage.removeItem(STORAGE_KEY_BANNERS);
 
-    return newDoc.id;
+    return resolvedGameId;
   },
 
   // Reject and delete from 'under_review'

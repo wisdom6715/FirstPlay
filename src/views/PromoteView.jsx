@@ -16,7 +16,7 @@ import {
   ArrowLeft,
   Mail
 } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../services/firebaseConfig';
 import { emailService } from '../services/emailService';
@@ -176,9 +176,15 @@ export default function PromoteView({
       setLoadingStep('Saving campaign listing...');
 
       if (category === 'game') {
-        // Upload strictly to 'under_review' collection in Firebase
+        let generatedGameId = '';
+        // Upload strictly to 'under_review' collection in Firebase with generated game_id
         if (db) {
-          await addDoc(collection(db, 'under_review'), {
+          const gameDocRef = doc(collection(db, 'under_review'));
+          generatedGameId = gameDocRef.id;
+
+          await setDoc(gameDocRef, {
+            game_id: generatedGameId,
+            id: generatedGameId,
             category: 'game',
             title: title.trim(),
             name: title.trim(),
@@ -204,15 +210,16 @@ export default function PromoteView({
           });
         }
 
-        // Send Under Review confirmation email via Resend
+        // Send Under Review confirmation email via Resend including generated gameId
         try {
           await emailService.sendUnderReviewEmail({
             to: email.trim().toLowerCase(),
             gameTitle: title.trim(),
             studioName: studioName.trim() || 'Independent Studio',
-            gameUrl: url.trim()
+            gameUrl: url.trim(),
+            gameId: generatedGameId
           });
-          console.info('[PromoteView] Under review email notification sent to', email);
+          console.info('[PromoteView] Under review email notification sent to', email, 'Game ID:', generatedGameId);
         } catch (mailErr) {
           console.warn('[PromoteView] Email notification notice:', mailErr);
         }
@@ -225,10 +232,16 @@ export default function PromoteView({
         setPendingRef(refCode);
 
         if (db) {
-          await addDoc(collection(db, 'pending_campaigns'), {
+          const campaignDocRef = doc(collection(db, 'pending_campaigns'));
+          const generatedAppId = campaignDocRef.id;
+
+          await setDoc(campaignDocRef, {
+            game_id: generatedAppId,
+            id: generatedAppId,
             reference: refCode,
             category,
             title: title.trim(),
+            name: title.trim(),
             email: email.trim().toLowerCase(),
             publisher_email: email.trim().toLowerCase(),
             studioName: studioName.trim() || 'Independent Studio',

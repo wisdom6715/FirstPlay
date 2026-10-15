@@ -211,7 +211,7 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
 
       await tournamentService.createTournamentOnAdmin({
         tournamentName: tournamentName.trim(),
-        gameId: selectedGameId,
+        gameId: selectedGame?.game_id || selectedGame?.id || selectedGameId,
         gameName: selectedGame?.name || 'FirstPlay Game',
         gameLogo: selectedGame?.logo_url || '',
         tournamentImgUrl: finalImgUrl,
@@ -660,13 +660,20 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
                     <option value="" disabled>-- Choose an approved game --</option>
                     {approvedGames.map((game) => (
                       <option key={game.id} value={game.id}>
-                        {game.name} ({game.creator || 'Independent Studio'})
+                        {game.name} — ID: {game.game_id || game.id} ({game.creator || 'Independent Studio'})
                       </option>
                     ))}
                   </select>
                 )}
+                {selectedGame && (
+                  <div className="flex items-center gap-2 text-[11px] text-zinc-600 bg-zinc-50 border border-zinc-200/90 px-3 py-1.5 rounded-xl font-mono">
+                    <Gamepad2 size={13} className="text-[#0071e3] shrink-0" />
+                    <span className="font-semibold text-zinc-700">Pre-assigned Game ID:</span>
+                    <span className="text-[#0071e3] font-bold select-all">{selectedGame.game_id || selectedGame.id}</span>
+                  </div>
+                )}
                 <p className="text-[11px] text-zinc-500">
-                  Only games that are approved and live on FirstPlay appear in this list.
+                  Only games that are approved and live on FirstPlay appear in this list. Tournaments strictly bind to this pre-assigned Game ID.
                 </p>
               </div>
 
