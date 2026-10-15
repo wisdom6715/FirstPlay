@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, HardDrive, Cpu, Globe, RefreshCw, CheckCircle2, Palette, Moon, Sun, Laptop } from 'lucide-react';
-import { isFirebaseLive } from '../services/firebaseConfig';
+import { Settings, HardDrive, Cpu, RefreshCw, CheckCircle2, Palette, Moon, Sun, Laptop } from 'lucide-react';
 
 export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
   const [appInfo, setAppInfo] = useState({
@@ -210,34 +209,6 @@ export default function SettingsView({ currentTheme = 'dark', onThemeChange }) {
                 <span>{clearedStatus}</span>
               </div>
             )}
-          </div>
-        </div>
-
-        {/* System & Distribution */}
-        <div className="bg-[#1c1c1e]/80 border border-white/[0.08] rounded-2xl p-5 space-y-4 shadow-xl">
-          <div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
-            <Globe size={15} className="text-[#0a84ff]" />
-            <h2 className="text-sm font-semibold text-white">
-              System Environment
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 text-xs">
-            <div className="p-3 rounded-xl bg-black/30 border border-white/[0.04]">
-              <span className="text-zinc-500 text-[10px] block">Sync Mode</span>
-              <span className="font-medium text-emerald-400 block mt-0.5 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                {isFirebaseLive ? 'Cloud Synced' : 'Local Cache'}
-              </span>
-            </div>
-            <div className="p-3 rounded-xl bg-black/30 border border-white/[0.04]">
-              <span className="text-zinc-500 text-[10px] block">Web Engine</span>
-              <span className="font-medium text-white block mt-0.5">Next.js 16 + React 19</span>
-            </div>
-            <div className="p-3 rounded-xl bg-black/30 border border-white/[0.04]">
-              <span className="text-zinc-500 text-[10px] block">Platform</span>
-              <span className="font-medium text-white block mt-0.5">HTML5 Web / WebGL</span>
-            </div>
           </div>
         </div>
 
