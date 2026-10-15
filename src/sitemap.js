@@ -61,6 +61,12 @@ export const STATIC_ROUTES = [
     priority: 0.8
   },
   {
+    url: `${SITE_URL}/tournaments`,
+    lastModified: new Date().toISOString(),
+    changeFrequency: 'daily',
+    priority: 0.9
+  },
+  {
     url: `${SITE_URL}/settings`,
     lastModified: new Date().toISOString(),
     changeFrequency: 'monthly',

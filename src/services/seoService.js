@@ -167,6 +167,14 @@ export function setTabSEO(tab, categoryFilter = 'All') {
       });
       break;
 
+    case 'tournaments':
+      updateSEO({
+        title: 'Tournaments & Leaderboard Competitions — FirstPlay',
+        description: 'Join competitive 24-hour web game tournaments on FirstPlay. Compete with top players across Nigeria, climb the live leaderboard, and win your share of cash prize pools.',
+        canonical: `${SITE_URL}/tournaments`
+      });
+      break;
+
     case 'favourite':
       updateSEO({
         title: 'Your Favorites & Game Library — FirstPlay',

@@ -12,6 +12,7 @@ import LibraryView from './views/LibraryView';
 import SettingsView from './views/SettingsView';
 import PromoteView from './views/PromoteView';
 import GiftsView from './views/GiftsView';
+import TournamentsView from './views/TournamentsView';
 import RedeemView from './views/RedeemView';
 import AdminAuthView from './views/AdminAuthView';
 import AdminDashboardView from './views/AdminDashboardView';
@@ -37,6 +38,7 @@ function getTabFromPath(pathname) {
   if (clean === 'search') return 'search';
   if (clean === 'category' || clean === 'categories') return 'category';
   if (clean === 'favourite' || clean === 'favourites' || clean === 'favorites') return 'favourite';
+  if (clean === 'tournaments' || clean === 'tournament') return 'tournaments';
   if (clean === 'gifts' || clean === 'gift' || clean === 'rewards' || clean === 'spin') return 'gifts';
   if (clean === 'redeem') return 'redeem';
   if (clean === 'privacy' || clean === 'privacy-policy') return 'privacy';
@@ -602,6 +604,18 @@ export default function App() {
                   <SettingsView
                     currentTheme={theme}
                     onThemeChange={setTheme}
+                  />
+                )}
+
+                {currentTab === 'tournaments' && (
+                  <TournamentsView
+                    onNavigateDiscover={() => navigateToTab('discover')}
+                    onNavigateCategory={handleNavigateCategory}
+                    onNavigateSection={handleNavigateSection}
+                    onNavigateTab={navigateToTab}
+                    onOpenInstall={handleInstallClick}
+                    onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
+                    onOpenTerms={handleOpenTerms}
                   />
                 )}
 

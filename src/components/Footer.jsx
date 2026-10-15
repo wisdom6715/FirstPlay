@@ -126,6 +126,19 @@ export default function Footer({
                 <button
                   type="button"
                   onClick={() => {
+                    onNavigateTab?.('tournaments');
+                    const container = document.querySelector('.overflow-y-auto');
+                    container?.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  Tournaments
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
                     onNavigateTab?.('promote');
                     const container = document.querySelector('.overflow-y-auto');
                     container?.scrollTo({ top: 0, behavior: 'smooth' });
