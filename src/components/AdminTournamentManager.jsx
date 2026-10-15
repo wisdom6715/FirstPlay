@@ -99,17 +99,15 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
     return approvedGames.find((g) => g.id === selectedGameId);
   }, [approvedGames, selectedGameId]);
 
-  // Auto-fill when game is picked: tournament banner matches the selected game's banner image
+  // Auto-fill when game is picked: tournament banner, name, and rules match the selected game
   const handleGameChange = (gameId) => {
     setSelectedGameId(gameId);
     const game = approvedGames.find((g) => g.id === gameId);
     if (game) {
-      if (!tournamentName || tournamentName.includes('Championship') || tournamentName.includes('Grand Prix')) {
-        setTournamentName(`${game.name} Grand Prix`);
-      }
-      if (!description) {
-        setDescription(`Compete for the highest score in ${game.name} over 24 hours. The Top 5 players will win a share of the prize pool!`);
-      }
+      setTournamentName(`${game.name} Grand Prix`);
+      // Update the game name in the rules and guidelines to the name of the selected game
+      setDescription(`Compete for the highest score in ${game.name} over 24 hours. The Top 5 players will win a share of the prize pool!`);
+
       // The tournament banner should be the banner image of the selected game
       const gameBanner = game.banner_url || game.flyer || game.banner || game.flyer_url || game.logo_url || '';
       setTournamentImgUrl(gameBanner);
