@@ -83,15 +83,26 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
     loadTournaments();
   }, [loadTournaments]);
 
-  // Derived selected game object
+  // Filter ONLY approved games from apps collection (active and not under review)
+  const approvedGames = useMemo(() => {
+    return (allGames || []).filter((g) => {
+      if (!g || !g.id) return false;
+      if (g.isUnderReview) return false;
+      // Exclude disabled / inactive games
+      if (g.active === false || g.active === 'false' || g.status === 'disabled') return false;
+      return Boolean(g.name || g.title);
+    });
+  }, [allGames]);
+
+  // Derived selected game object from approved games
   const selectedGame = useMemo(() => {
-    return allGames.find((g) => g.id === selectedGameId);
-  }, [allGames, selectedGameId]);
+    return approvedGames.find((g) => g.id === selectedGameId);
+  }, [approvedGames, selectedGameId]);
 
   // Auto-fill when game is picked
   const handleGameChange = (gameId) => {
     setSelectedGameId(gameId);
-    const game = allGames.find((g) => g.id === gameId);
+    const game = approvedGames.find((g) => g.id === gameId);
     if (game) {
       if (!tournamentName || tournamentName.includes('Championship') || tournamentName.includes('Grand Prix')) {
         setTournamentName(`${game.name} Grand Prix`);
@@ -139,7 +150,7 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
 
   // Open creation modal
   const handleOpenCreateModal = () => {
-    const firstGame = allGames[0];
+    const firstGame = approvedGames[0];
     setSelectedGameId(firstGame?.id || '');
     setTournamentName(firstGame ? `${firstGame.name} Grand Prix` : 'FirstPlay Championship');
     setDescription(firstGame ? `Compete for the highest score in ${firstGame.name} over 24 hours. The Top 5 players will win a share of the prize pool!` : 'Compete for the highest score over 24 hours. The Top 5 players split the prize pool!');
@@ -619,24 +630,44 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
             <form id="create-tournament-form" onSubmit={handleSaveTournament} className="p-6 overflow-y-auto space-y-4 text-left">
               {/* 1. Select Approved Game from Catalog */}
               <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-zinc-800">
-                  Select Game <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={selectedGameId}
-                  onChange={(e) => handleGameChange(e.target.value)}
-                  required
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-300 text-xs text-zinc-900 outline-none focus:border-[#0071e3] focus:ring-2 focus:ring-blue-100 font-semibold"
-                >
-                  <option value="" disabled>-- Choose an approved game from catalog --</option>
-                  {allGames.map((game) => (
-                    <option key={game.id} value={game.id}>
-                      {game.name} ({game.creator || 'FirstPlay'})
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between">
+                  <label htmlFor="select-approved-game" className="block text-xs font-bold text-zinc-800">
+                    Select Approved Game <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>{approvedGames.length} Approved</span>
+                  </span>
+                </div>
+
+                {approvedGames.length === 0 ? (
+                  <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <AlertCircle size={14} className="text-amber-600 shrink-0" />
+                      <span>No approved games found</span>
+                    </p>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      Only approved, live games can host tournaments. Please approve a game in the Game Approval Catalogue first.
+                    </p>
+                  </div>
+                ) : (
+                  <select
+                    id="select-approved-game"
+                    value={selectedGameId}
+                    onChange={(e) => handleGameChange(e.target.value)}
+                    required
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-300 text-xs text-zinc-900 outline-none focus:border-[#0071e3] focus:ring-2 focus:ring-blue-100 font-semibold"
+                  >
+                    <option value="" disabled>-- Choose an approved game --</option>
+                    {approvedGames.map((game) => (
+                      <option key={game.id} value={game.id}>
+                        {game.name} ({game.creator || 'Independent Studio'})
+                      </option>
+                    ))}
+                  </select>
+                )}
                 <p className="text-[11px] text-zinc-500">
-                  Tournaments run inside this game and record player high scores into leaderboard participants.
+                  Only games that are approved and live on FirstPlay appear in this list.
                 </p>
               </div>
 

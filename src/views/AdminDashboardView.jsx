@@ -1257,7 +1257,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     </>
         ) : activeNav === 'tournaments' ? (
           <AdminTournamentManager 
-            allGames={allGamesList}
+            allGames={allGamesList.filter(g => !g.isUnderReview && g.active !== false && g.active !== 'false' && g.status !== 'disabled')}
             onShowToast={showToast}
           />
         ) : (
