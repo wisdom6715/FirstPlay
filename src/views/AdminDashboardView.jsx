@@ -30,10 +30,12 @@ import {
   Disc,
   Ticket,
   Menu,
-  Tag
+  Tag,
+  Trophy
 } from 'lucide-react';
 import appLogo from '../assets/icon.png';
 import AdminGiftManager from '../components/AdminGiftManager';
+import AdminTournamentManager from '../components/AdminTournamentManager';
 
 const PRESET_REJECTION_REASONS = [
   'Launch URL is broken, inaccessible, or returns an HTTP error.',
@@ -722,6 +724,35 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                 </div>
               )}
             </div>
+
+            {/* Nav Button 3: Tournaments */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('tournaments');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between text-left cursor-pointer group ${
+                  activeNav === 'tournaments'
+                    ? 'bg-[#0071e3] text-white shadow-xs'
+                    : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Trophy 
+                    size={16} 
+                    className={activeNav === 'tournaments' ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-800'} 
+                  />
+                  <span>Tournaments</span>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                  activeNav === 'tournaments' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                }`}>
+                  24h
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Sidebar Footer */}
@@ -1224,6 +1255,11 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
         </section>
       )}
     </>
+        ) : activeNav === 'tournaments' ? (
+          <AdminTournamentManager 
+            allGames={allGamesList}
+            onShowToast={showToast}
+          />
         ) : (
           <AdminGiftManager 
             activeSubTab={activeNav}
