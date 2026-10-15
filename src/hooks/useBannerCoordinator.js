@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 
 /**
  * Normalizes and extracts a deduplicated pool of items suitable for banner carousels.
- * Strictly uses authentic items from Firebase listings and hero banners.
+ * Strictly uses authentic items from the promotional collection in Firebase.
  */
 export function getUniqueBannerPool(heroBanners = [], listings = [], heroItem = null) {
   const seen = new Set();
@@ -10,7 +10,7 @@ export function getUniqueBannerPool(heroBanners = [], listings = [], heroItem = 
 
   const addItem = (item) => {
     if (!item) return;
-    const key = item.id || item.url || item.name;
+    const key = item.id || item.url || item.name || item.banner_url || item.image_url;
     if (!key || seen.has(key)) return;
     seen.add(key);
     pool.push(item);
@@ -18,7 +18,8 @@ export function getUniqueBannerPool(heroBanners = [], listings = [], heroItem = 
 
   (heroBanners || []).forEach(addItem);
   if (heroItem) addItem(heroItem);
-  (listings || []).forEach(addItem);
+  // NOTE: Catalog listings are intentionally excluded.
+  // Banners in this website must ONLY render images/products from the promotional collection in Firebase.
 
   return pool;
 }

@@ -56,10 +56,10 @@ export default function DiscoverView({
     });
   }, [games]);
 
-  // Unified banner candidate pool from authentic Firebase listings
+  // Unified banner candidate pool strictly from promotional collection in Firebase
   const bannerPool = useMemo(() => {
-    return getUniqueBannerPool(heroBanners, listings, heroItem);
-  }, [heroBanners, listings, heroItem]);
+    return getUniqueBannerPool(heroBanners, [], heroItem);
+  }, [heroBanners, heroItem]);
 
   const poolKey = useMemo(() => {
     return bannerPool.map(i => i.id || i.name).join('|');

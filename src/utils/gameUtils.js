@@ -22,7 +22,7 @@ export function isLagosLife(item) {
  * Opens game in a new browser tab safely with noopener/noreferrer.
  */
 export function openGameInNewTab(item) {
-  const targetUrl = item?.url || 'https://lagoslife.app';
+  const targetUrl = item?.url || item?.product_url || item?.target_url || item?.link || 'https://lagoslife.app';
   if (typeof window !== 'undefined') {
     if (window.firstPlayAPI?.openExternal) {
       window.firstPlayAPI.openExternal(targetUrl);

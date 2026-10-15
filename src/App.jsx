@@ -278,8 +278,8 @@ export default function App() {
       }
     }
 
-    // If Lagos Life OR configured with open_in_app: false, redirect / open in new tab
-    if (isLagosLife(item) || item?.open_in_app === false) {
+    // If Lagos Life, promotional product, or configured with open_in_app: false, redirect / open in new tab
+    if (isLagosLife(item) || item?.open_in_app === false || item?.category === 'product' || item?.category === 'promotional') {
       openGameInNewTab(item);
       return;
     }

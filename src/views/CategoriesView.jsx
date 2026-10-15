@@ -127,10 +127,10 @@ export default function CategoriesView({
     }
   }, [activeTag, topGames, newGames, actionGames, arcadeGames, apps, products, listings, games, SHOW_OTHER_CATEGORIES]);
 
-  // Unified banner candidate pool from authentic Firebase listings
+  // Unified banner candidate pool strictly from promotional collection in Firebase
   const bannerPool = useMemo(() => {
-    return getUniqueBannerPool(heroBanners, listings);
-  }, [heroBanners, listings]);
+    return getUniqueBannerPool(heroBanners);
+  }, [heroBanners]);
 
   const poolKey = useMemo(() => {
     return bannerPool.map(i => i.id || i.name).join('|');

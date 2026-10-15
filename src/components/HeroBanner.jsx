@@ -79,14 +79,17 @@ export default function HeroBanner({
   if (!currentItem) return null;
 
   const isLagos = isLagosLife(currentItem);
-  const isExternal = isLagos || currentItem.open_in_app === false;
-  const actionLabel = isExternal
-    ? 'Play in New Tab'
-    : currentItem.category === 'game' 
-      ? 'Play' 
-      : currentItem.category === 'app' 
-        ? 'Get' 
-        : 'Visit';
+  const isProduct = currentItem.category === 'product' || Boolean(currentItem.price) || Boolean(currentItem.product_url);
+  const isExternal = isLagos || isProduct || currentItem.open_in_app === false;
+  const actionLabel = isProduct
+    ? 'View Product'
+    : isExternal
+      ? 'Play in New Tab'
+      : currentItem.category === 'game' 
+        ? 'Play' 
+        : currentItem.category === 'app' 
+          ? 'Get' 
+          : 'Visit';
 
   const handleNext = (e) => {
     e?.stopPropagation?.();
@@ -137,7 +140,7 @@ export default function HeroBanner({
         >
           <img
             key={`img-${currentItem.id || currentItem.name || currentIndex}`}
-            src={currentItem.banner_url || currentItem.logo_url}
+            src={currentItem.banner_url || currentItem.image_url || currentItem.logo_url}
             alt={currentItem.name}
             className="w-full h-full object-cover object-center rounded-2xl sm:rounded-3xl group-hover:scale-[1.025] transition-transform duration-700 ease-out animate-in fade-in duration-500 will-change-transform"
             style={{
@@ -157,7 +160,7 @@ export default function HeroBanner({
           style={{ clipPath: 'inset(0 round 1.5rem)', WebkitClipPath: 'inset(0 round 1.5rem)' }}
         />
 
-        {/* Layer 2: Editorial Content inside an Apple-style Liquid Glass Card (covers ~half width on mobile so game snippet image shines through) */}
+        {/* Layer 2: Editorial Content inside an Apple-style Liquid Glass Card */}
         <div className="relative z-20 w-full h-full p-2.5 sm:p-5 md:p-8 flex flex-col justify-end min-h-[300px] sm:min-h-[340px] md:min-h-[380px] lg:min-h-[400px] pointer-events-none">
           <div 
             key={`content-${currentItem.id || currentItem.name || currentIndex}`}
@@ -171,7 +174,7 @@ export default function HeroBanner({
             {/* Category / Editorial Tag with rotation pill */}
             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <span className="inline-block px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 text-[8px] sm:text-[10px] font-bold uppercase tracking-wider text-white shadow-sm truncate max-w-full">
-                {currentItem.badge_text || (currentItem.category === 'game' ? 'GAMES WE LOVE' : 'FEATURED PROMOTION')}
+                {currentItem.badge_text || (isProduct ? 'FEATURED PRODUCT' : 'SPECIAL PROMOTION')}
               </span>
 
               {currentItem.requires_fullscreen && (
@@ -188,17 +191,31 @@ export default function HeroBanner({
 
             {/* Metadata Line */}
             <div className="flex items-center gap-1.5 sm:gap-2.5 text-[10px] sm:text-xs font-medium text-zinc-200 flex-wrap pt-0.5">
-              <span className="font-semibold text-white uppercase tracking-wider">{currentItem.category}</span>
-              <span className="text-white/40">•</span>
-              <span className="hidden xs:inline">Instant WebGL</span>
-              <span className="text-white/40 hidden xs:inline">•</span>
-              <span className="truncate">Zero Install</span>
+              <span className="font-semibold text-white uppercase tracking-wider">
+                {isProduct ? 'PRODUCT' : currentItem.category}
+              </span>
+              {currentItem.price && (
+                <>
+                  <span className="text-white/40">•</span>
+                  <span className="font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                    {typeof currentItem.price === 'number' ? `₦${currentItem.price.toLocaleString()}` : currentItem.price}
+                  </span>
+                </>
+              )}
+              {!isProduct && (
+                <>
+                  <span className="text-white/40">•</span>
+                  <span className="hidden xs:inline">Instant WebGL</span>
+                  <span className="text-white/40 hidden xs:inline">•</span>
+                  <span className="truncate">Zero Install</span>
+                </>
+              )}
               {currentItem.rating && (
                 <>
                   <span className="text-white/40">•</span>
                   <span className="text-amber-300 font-bold flex items-center gap-0.5">
                     <Star size={10} fill="currentColor" />
-                    <span>{currentItem.rating.toFixed(1)}</span>
+                    <span>{Number(currentItem.rating).toFixed(1)}</span>
                   </span>
                 </>
               )}
@@ -209,10 +226,10 @@ export default function HeroBanner({
               {currentItem.description}
             </p>
 
-            {/* Studio / Creator line */}
+            {/* Studio / Brand / Creator line */}
             <div className="text-[9px] sm:text-[11px] text-zinc-300 font-normal truncate">
-              <span>Studio: </span>
-              <span className="text-white font-semibold">{currentItem.creator || 'FirstPlay Independent Studio'}</span>
+              <span>{isProduct ? 'Brand: ' : 'Studio: '}</span>
+              <span className="text-white font-semibold">{currentItem.creator || currentItem.brand || 'FirstPlay Spotlight'}</span>
             </div>
 
             {/* Primary Action Button */}
@@ -226,7 +243,12 @@ export default function HeroBanner({
                   }}
                   className="px-3.5 sm:px-6 py-1.5 sm:py-2.5 rounded-full bg-white text-black font-bold text-[10px] sm:text-xs tracking-wide hover:bg-zinc-100 transition-all active:scale-95 shadow-xl flex items-center gap-1.5 cursor-pointer"
                 >
-                  {isExternal ? (
+                  {isProduct ? (
+                    <>
+                      <span>View Product</span>
+                      <ExternalLink size={11} />
+                    </>
+                  ) : isExternal ? (
                     <>
                       <span>Play in New Tab</span>
                       <ExternalLink size={11} />
