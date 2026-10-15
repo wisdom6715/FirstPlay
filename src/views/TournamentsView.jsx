@@ -6,25 +6,43 @@ import {
   Clock, 
   Smartphone, 
   Download, 
-  ExternalLink, 
-  AlertCircle, 
   X, 
-  Check, 
-  Copy, 
-  Sparkles, 
   Calendar, 
-  Users, 
   ArrowRight,
-  Flame,
   CheckCircle2,
-  RefreshCw,
-  QrCode
+  RefreshCw
 } from 'lucide-react';
-import QRCode from 'qrcode';
 import { getTournaments } from '../services/tournamentService';
-import { triggerPwaInstall, detectUserOS } from '../utils/pwaUtils';
-import { copyToClipboard } from '../utils/clipboardUtils';
 import Footer from '../components/Footer';
+
+// Official Store URLs for FirstPlay Mobile App
+const PLAYSTORE_URL = 'https://play.google.com/store/apps/details?id=com.firstplay.app';
+const APP_STORE_URL = 'https://apps.apple.com/app/firstplay/id6470000000';
+
+/**
+ * High-precision Google Play triangular vector icon
+ */
+function GooglePlayIcon({ className = "w-4 h-4 shrink-0" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path d="M3.609 1.814L13.792 12 3.61 22.186a2.072 2.072 0 0 1-.22-.962V2.776c0-.36.08-.69.22-.962z" fill="#2196F3" />
+      <path d="M17.432 8.36L5.342.3c-.562-.375-1.196-.4-1.733-.2L13.792 12l3.64-3.64z" fill="#4CAF50" />
+      <path d="M13.792 12l-10.183 11.9c.537.2 1.17.175 1.733-.2l12.09-8.06-3.64-3.64z" fill="#F44336" />
+      <path d="M21.708 11.23l-4.276-2.87-3.64 3.64 3.64 3.64 4.276-2.87c.78-.52 1.292-1.35 1.292-2.27s-.512-1.75-1.292-2.27z" fill="#FFEB3B" />
+    </svg>
+  );
+}
+
+/**
+ * Authentic Apple silhouette icon
+ */
+function AppleIcon({ className = "w-4 h-4 shrink-0" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor" aria-hidden="true">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 1.01-2.87-.9.04-2 .61-2.65 1.36-.58.65-1.08 1.71-.94 2.74 1.01.08 2.02-.54 2.58-1.23z" />
+    </svg>
+  );
+}
 
 /**
  * Format remaining time in hours, minutes, seconds
@@ -50,7 +68,6 @@ export default function TournamentsView({
   onNavigateCategory,
   onNavigateSection,
   onNavigateTab,
-  onOpenInstall,
   onOpenPrivacyPolicy,
   onOpenTerms
 }) {
@@ -58,12 +75,7 @@ export default function TournamentsView({
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'ongoing' | 'upcoming' | 'completed'
   const [selectedTournament, setSelectedTournament] = useState(null);
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
-  const [copiedLink, setCopiedLink] = useState(false);
   const [tick, setTick] = useState(0);
-
-  const os = detectUserOS();
-  const isMobile = os === 'android' || os === 'ios';
 
   // 1-second interval for real-time countdown updates
   useEffect(() => {
@@ -90,27 +102,6 @@ export default function TournamentsView({
     loadTournaments();
   }, []);
 
-  // Generate QR code for mobile app link
-  useEffect(() => {
-    async function makeQR() {
-      try {
-        const url = typeof window !== 'undefined' ? `${window.location.origin}/tournaments` : 'https://firstplay.fun';
-        const dataUrl = await QRCode.toDataURL(url, {
-          width: 200,
-          margin: 1,
-          color: {
-            dark: '#111827',
-            light: '#ffffff'
-          }
-        });
-        setQrCodeDataUrl(dataUrl);
-      } catch (err) {
-        console.warn('[TournamentsView] QR generation failed:', err);
-      }
-    }
-    makeQR();
-  }, []);
-
   // Filter tournaments
   const filteredTournaments = useMemo(() => {
     if (activeFilter === 'all') return tournaments;
@@ -126,25 +117,6 @@ export default function TournamentsView({
       completed: tournaments.filter((t) => t.computedStatus === 'completed').length
     };
   }, [tournaments]);
-
-  // Copy mobile link to clipboard
-  const handleCopyMobileLink = async () => {
-    const link = typeof window !== 'undefined' ? `${window.location.origin}/tournaments` : 'https://firstplay.fun';
-    const ok = await copyToClipboard(link);
-    if (ok) {
-      setCopiedLink(true);
-      setTimeout(() => setCopiedLink(false), 2500);
-    }
-  };
-
-  // Direct app install trigger
-  const handleMobileDownloadAction = async () => {
-    if (onOpenInstall) {
-      onOpenInstall();
-    } else {
-      await triggerPwaInstall();
-    }
-  };
 
   return (
     <div className="flex-1 overflow-y-auto px-3.5 sm:px-6 lg:px-10 py-4 sm:py-6 space-y-6 sm:space-y-8 text-left">
@@ -517,56 +489,30 @@ export default function TournamentsView({
               </div>
             </div>
 
-            {/* Dynamic Actions based on Desktop vs Mobile */}
-            {isMobile ? (
-              /* Mobile User: Direct Install / Launch */
-              <div className="space-y-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleMobileDownloadAction}
-                  className="w-full py-3 px-4 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-bold transition shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                >
-                  <Download size={15} />
-                  <span>Install / Open Mobile App</span>
-                </button>
-              </div>
-            ) : (
-              /* Desktop User: QR Code to scan with phone + link copy */
-              <div className="space-y-3 pt-1">
-                {qrCodeDataUrl && (
-                  <div className="p-3 bg-white rounded-2xl inline-block border border-zinc-200 shadow-xs mx-auto">
-                    <img 
-                      src={qrCodeDataUrl} 
-                      alt="Scan to open on mobile" 
-                      className="w-32 h-32 mx-auto"
-                    />
-                    <p className="text-[10px] text-zinc-500 font-bold mt-1">
-                      Scan with your phone camera
-                    </p>
-                  </div>
-                )}
+            {/* Store Download Buttons: Download on Playstore and Download on App Store */}
+            <div className="space-y-2.5 pt-1">
+              {/* Download on Playstore */}
+              <a
+                href={PLAYSTORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 rounded-2xl bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2.5 shadow-md shadow-black/10 cursor-pointer active:scale-[0.98]"
+              >
+                <GooglePlayIcon className="w-5 h-5 shrink-0" />
+                <span>Download on Playstore</span>
+              </a>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleCopyMobileLink}
-                    className="flex-1 py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 dark:bg-white/10 dark:hover:bg-white/15 text-xs font-semibold text-zinc-800 dark:text-zinc-200 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    {copiedLink ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                    <span>{copiedLink ? 'Link Copied!' : 'Copy Mobile Link'}</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleMobileDownloadAction}
-                    className="flex-1 py-2.5 px-3 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm shadow-blue-500/20"
-                  >
-                    <Download size={14} />
-                    <span>Install App</span>
-                  </button>
-                </div>
-              </div>
-            )}
+              {/* Download on App Store */}
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-3.5 px-4 rounded-2xl bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 text-white dark:text-zinc-900 text-xs sm:text-sm font-bold transition flex items-center justify-center gap-2.5 shadow-md shadow-black/10 cursor-pointer active:scale-[0.98]"
+              >
+                <AppleIcon className="w-5 h-5 shrink-0" />
+                <span>Download on App Store</span>
+              </a>
+            </div>
 
             {/* Back Button */}
             <div>
