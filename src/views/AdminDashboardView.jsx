@@ -1792,20 +1792,29 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
       {toastMessage && (
         <div
           role="status"
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-xl border text-xs font-bold flex items-center gap-2.5 animate-in slide-in-from-bottom-3 duration-200 select-none ${
+          data-keep-white
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-2.5 animate-in slide-in-from-bottom-3 duration-200 select-none ${
             toastMessage.type === 'error'
-              ? 'bg-red-50 border-red-200 text-red-800'
+              ? 'bg-red-50 border-red-200 text-red-900 shadow-red-500/10'
               : toastMessage.type === 'info'
-              ? 'bg-zinc-900 border-zinc-800 text-white'
-              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              ? 'bg-zinc-900 border-zinc-700/80 text-white shadow-2xl ring-1 ring-white/10'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-emerald-500/10'
           }`}
         >
           {toastMessage.type === 'error' ? (
             <AlertCircle size={16} className="text-red-600 shrink-0" />
+          ) : toastMessage.type === 'info' ? (
+            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
           ) : (
             <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
           )}
-          <span>{toastMessage.message}</span>
+          <span 
+            data-keep-white
+            style={toastMessage.type === 'info' ? { color: '#ffffff' } : undefined}
+            className={toastMessage.type === 'info' ? 'text-white font-bold tracking-normal' : 'tracking-normal'}
+          >
+            {toastMessage.message}
+          </span>
         </div>
       )}
     </div>

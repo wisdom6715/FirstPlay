@@ -481,13 +481,19 @@
   border-color: rgba(0, 0, 0, 0.08) !important;
 }
 
-/* Typography in light mode - PROTECT hero-banner-content text colors and colored buttons */
-[data-theme="light"] .text-white:not(.hero-banner-content *):not([data-keep-white]):not([class*="bg-[#"]):not([class*="bg-blue-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not(button[class*="bg-"]):not(span[class*="bg-[#"]):not(span[class*="bg-blue-"]):not(span[class*="bg-emerald-"]) {
+/* Typography in light mode - PROTECT hero-banner-content text colors, colored buttons, and toast notifications */
+[data-theme="light"] .text-white:not(.hero-banner-content *):not([data-keep-white]):not([data-keep-white] *):not([role="status"]):not([role="status"] *):not([class*="bg-[#"]):not([class*="bg-blue-"]):not([class*="bg-emerald-"]):not([class*="bg-rose-"]):not(button[class*="bg-"]):not(span[class*="bg-[#"]):not(span[class*="bg-blue-"]):not(span[class*="bg-emerald-"]) {
   color: #1d1d1f !important;
 }
 
 [data-theme="light"] [data-keep-white],
 [data-theme="light"] [data-keep-white] *,
+[data-theme="light"] [role="status"][data-keep-white],
+[data-theme="light"] [role="status"][data-keep-white] *,
+[data-theme="light"] [role="status"].bg-zinc-900,
+[data-theme="light"] [role="status"].bg-zinc-900 *,
+[data-theme="light"] [role="status"].bg-zinc-950,
+[data-theme="light"] [role="status"].bg-zinc-950 *,
 [data-theme="light"] button[class*="bg-[#0071e3]"],
 [data-theme="light"] button[class*="bg-[#0071e3]"] *,
 [data-theme="light"] button[class*="bg-[#0a84ff]"],
