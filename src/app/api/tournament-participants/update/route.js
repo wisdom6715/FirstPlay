@@ -16,9 +16,11 @@ import { handleOptions, jsonResponse } from '../../../../utils/apiCors.js';
 export const OPTIONS = handleOptions;
 
 /**
- * Helper to update or create a tournament participant score document
+ * Helper to update or create a tournament participant score document.
+ * Enforces single-play rule: each user can only play and submit their score once per tournament.
+ * Subsequent attempts to submit or update a score will be rejected with HTTP 409 Conflict.
  */
-async function recordParticipantScore({ userId, tournamentId, score, username, keepOnlyHighest = false }) {
+async function recordParticipantScore({ userId, tournamentId, score, username }) {
   const numericScore = Number(score);
   const cleanUserId = userId.toString().trim();
   const cleanTournamentId = (tournamentId || '').toString().trim();
@@ -55,39 +57,47 @@ async function recordParticipantScore({ userId, tournamentId, score, username, k
       }
     }
   } else {
-    // If tournament_id was NOT provided, find existing participations for this user_id
-    const qUser = query(
-      collection(db, 'tournament_participants'),
-      where('user_id', '==', cleanUserId)
-    );
-    const userSnap = await getDocs(qUser);
-
-    if (!userSnap.empty) {
-      // Pick the most recent record or first record
-      const docs = userSnap.docs.map((d) => ({ ref: d.ref, data: d.data() }));
-      docs.sort((a, b) => {
-        const timeA = a.data.updated_at?.toMillis ? a.data.updated_at.toMillis() : 0;
-        const timeB = b.data.updated_at?.toMillis ? b.data.updated_at.toMillis() : 0;
-        return timeB - timeA;
-      });
-      targetDocRef = docs[0].ref;
-      existingData = docs[0].data;
-      resolvedTournamentId = existingData.tournament_id || '';
-    } else {
-      // Try to find currently ongoing tournament to auto-enroll
-      try {
-        const qOngoing = query(
-          collection(db, 'tournaments'),
-          where('status', '==', 'ongoing'),
-          limit(1)
-        );
-        const ongoingSnap = await getDocs(qOngoing);
-        if (!ongoingSnap.empty) {
-          resolvedTournamentId = ongoingSnap.docs[0].id;
-          targetDocRef = doc(db, 'tournament_participants', `${resolvedTournamentId}_${cleanUserId}`);
+    // If tournament_id was NOT provided, first attempt to find currently ongoing tournament
+    try {
+      const qOngoing = query(
+        collection(db, 'tournaments'),
+        where('status', '==', 'ongoing'),
+        limit(1)
+      );
+      const ongoingSnap = await getDocs(qOngoing);
+      if (!ongoingSnap.empty) {
+        resolvedTournamentId = ongoingSnap.docs[0].id;
+        const directRef = doc(db, 'tournament_participants', `${resolvedTournamentId}_${cleanUserId}`);
+        const snap = await getDoc(directRef);
+        if (snap.exists()) {
+          targetDocRef = directRef;
+          existingData = snap.data();
+        } else {
+          targetDocRef = directRef;
         }
-      } catch {
-        // Fallback
+      }
+    } catch {
+      // Fallback
+    }
+
+    if (!targetDocRef) {
+      // Fallback: check existing participations for this user_id
+      const qUser = query(
+        collection(db, 'tournament_participants'),
+        where('user_id', '==', cleanUserId)
+      );
+      const userSnap = await getDocs(qUser);
+
+      if (!userSnap.empty) {
+        const docs = userSnap.docs.map((d) => ({ ref: d.ref, data: d.data() }));
+        docs.sort((a, b) => {
+          const timeA = a.data.updated_at?.toMillis ? a.data.updated_at.toMillis() : 0;
+          const timeB = b.data.updated_at?.toMillis ? b.data.updated_at.toMillis() : 0;
+          return timeB - timeA;
+        });
+        targetDocRef = docs[0].ref;
+        existingData = docs[0].data;
+        resolvedTournamentId = existingData.tournament_id || '';
       }
     }
   }
@@ -96,19 +106,40 @@ async function recordParticipantScore({ userId, tournamentId, score, username, k
     throw new Error('tournament_id is required to register or update score for a new tournament participant');
   }
 
-  const previousScore = existingData?.score !== undefined ? Number(existingData.score) : null;
-  const previousHighest = existingData?.highest_score !== undefined ? Number(existingData.highest_score) : (previousScore || 0);
+  // Check if score has already been submitted for this user in this tournament
+  const alreadyPlayed = Boolean(
+    existingData && (
+      existingData.has_played === true ||
+      existingData.score_submitted === true ||
+      existingData.played === true ||
+      (existingData.score !== undefined && existingData.score !== null)
+    )
+  );
 
-  // If keepOnlyHighest is requested, do not lower score if new score is smaller
-  const finalScore = keepOnlyHighest ? Math.max(previousScore || 0, numericScore) : numericScore;
-  const newHighestScore = Math.max(previousHighest, numericScore);
+  if (alreadyPlayed) {
+    const err = new Error('Score has already been submitted for this tournament. Each user can only play and submit their score once.');
+    err.statusCode = 409;
+    err.details = {
+      already_played: true,
+      has_played: true,
+      can_play: false,
+      user_id: cleanUserId,
+      tournament_id: resolvedTournamentId,
+      existing_score: Number(existingData.score) || 0,
+      submitted_at: existingData.submitted_at?.toDate ? existingData.submitted_at.toDate().toISOString() : (existingData.submitted_at || null)
+    };
+    throw err;
+  }
 
   if (existingData) {
-    // Update existing document
+    // User already joined/registered but hasn't submitted a score yet
     const updatePayload = {
-      score: finalScore,
-      highest_score: newHighestScore,
-      previous_score: previousScore,
+      score: numericScore,
+      highest_score: numericScore,
+      has_played: true,
+      played: true,
+      score_submitted: true,
+      submitted_at: serverTimestamp(),
       updated_at: serverTimestamp()
     };
     if (cleanUsername) {
@@ -116,15 +147,18 @@ async function recordParticipantScore({ userId, tournamentId, score, username, k
     }
     await updateDoc(targetDocRef, updatePayload);
   } else {
-    // Create new document
+    // New participation with score
     const initialPayload = {
       participant_id: targetDocRef.id,
       tournament_id: resolvedTournamentId,
       user_id: cleanUserId,
       username: cleanUsername || 'Player',
-      score: finalScore,
-      highest_score: newHighestScore,
-      previous_score: null,
+      score: numericScore,
+      highest_score: numericScore,
+      has_played: true,
+      played: true,
+      score_submitted: true,
+      submitted_at: serverTimestamp(),
       created_at: serverTimestamp(),
       updated_at: serverTimestamp()
     };
@@ -135,9 +169,11 @@ async function recordParticipantScore({ userId, tournamentId, score, username, k
     participant_id: targetDocRef.id,
     user_id: cleanUserId,
     tournament_id: resolvedTournamentId,
-    score: finalScore,
-    previous_score: previousScore,
-    highest_score: newHighestScore
+    score: numericScore,
+    highest_score: numericScore,
+    has_played: true,
+    already_played: true,
+    can_play: false
   };
 }
 
@@ -147,12 +183,15 @@ async function recordParticipantScore({ userId, tournamentId, score, username, k
  * Updates the tournament_participants collection to include the user's score from a game.
  * Uses user_id so scores never get mixed up between players.
  * 
+ * Single-Play Enforcement:
+ * A player can only submit their score once per tournament. Subsequent score submissions
+ * or update attempts for the same tournament will be rejected with HTTP 409 Conflict.
+ * 
  * Body JSON parameters:
  * - user_id (required): Unique player identifier
  * - score (required): Numeric game score (e.g. 2234)
- * - tournament_id (recommended): Identifier of the 24-hour tournament
+ * - tournament_id (recommended): Identifier of the tournament
  * - username (optional): Display name of the player
- * - high_score_only (optional boolean): If true, preserves highest score achieved
  */
 export async function POST(request) {
   try {
@@ -177,10 +216,9 @@ export async function POST(request) {
     const scoreVal = body.score;
     const tournamentId = body.tournament_id || body.tournamentId;
     const username = body.username || body.name;
-    const keepOnlyHighest = Boolean(body.high_score_only || body.keepOnlyHighest);
 
     // Validation
-    if (!userId || typeof userId !== 'string' && typeof userId !== 'number') {
+    if (!userId || (typeof userId !== 'string' && typeof userId !== 'number')) {
       return jsonResponse(
         { success: false, error: 'user_id is required to record participant score' },
         400
@@ -198,21 +236,25 @@ export async function POST(request) {
       userId,
       tournamentId,
       score: scoreVal,
-      username,
-      keepOnlyHighest
+      username
     });
 
     return jsonResponse({
       success: true,
-      message: 'Score updated successfully in tournament_participants collection',
+      message: 'Score submitted successfully. User has completed their single play for this tournament.',
       data: result,
       ...result
     });
   } catch (err) {
     console.error('[API] POST /api/tournament-participants/update error:', err);
+    const statusCode = err.statusCode || 500;
     return jsonResponse(
-      { success: false, error: err.message || 'Failed to update participant score' },
-      500
+      { 
+        success: false, 
+        error: err.message || 'Failed to update participant score',
+        ...(err.details || {})
+      },
+      statusCode
     );
   }
 }

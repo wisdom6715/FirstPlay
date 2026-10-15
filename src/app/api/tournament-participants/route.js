@@ -23,6 +23,8 @@ function normalizeParticipant(docSnap) {
   if (!docSnap) return null;
   const data = typeof docSnap.data === 'function' ? docSnap.data() : docSnap;
   const docId = docSnap.id || data.id || '';
+  const scoreVal = (data.score !== undefined && data.score !== null) ? Number(data.score) : null;
+  const hasPlayed = Boolean(data.has_played || data.score_submitted || data.played || scoreVal !== null);
 
   return {
     id: docId,
@@ -30,8 +32,13 @@ function normalizeParticipant(docSnap) {
     tournament_id: data.tournament_id || '',
     user_id: data.user_id || data.userId || '',
     username: data.username || data.name || data.display_name || 'Player',
-    score: Number(data.score) || 0,
-    highest_score: Number(data.highest_score ?? data.score) || 0,
+    score: scoreVal !== null ? scoreVal : 0,
+    has_played: hasPlayed,
+    can_play: !hasPlayed,
+    played: hasPlayed,
+    score_submitted: Boolean(data.score_submitted || scoreVal !== null),
+    highest_score: Number(data.highest_score ?? (scoreVal ?? 0)) || 0,
+    submitted_at: data.submitted_at?.toDate ? data.submitted_at.toDate().toISOString() : data.submitted_at || null,
     created_at: data.created_at?.toDate ? data.created_at.toDate().toISOString() : data.created_at || null,
     updated_at: data.updated_at?.toDate ? data.updated_at.toDate().toISOString() : data.updated_at || null
   };
@@ -78,6 +85,8 @@ export async function GET(request) {
               success: true,
               has_participated: true,
               hasParticipated: true,
+              has_played: participant.has_played,
+              can_play: participant.can_play,
               user_id: userId,
               tournament_id: tournamentId,
               score: participant.score,
@@ -103,6 +112,8 @@ export async function GET(request) {
             success: true,
             has_participated: true,
             hasParticipated: true,
+            has_played: participant.has_played,
+            can_play: participant.can_play,
             user_id: userId,
             tournament_id: tournamentId,
             score: participant.score,
@@ -115,6 +126,8 @@ export async function GET(request) {
           success: true,
           has_participated: false,
           hasParticipated: false,
+          has_played: false,
+          can_play: true,
           user_id: userId,
           tournament_id: tournamentId,
           score: null,
@@ -233,18 +246,36 @@ export async function POST(request) {
       const docRef = doc(db, 'tournament_participants', docId);
       const existingSnap = await getDoc(docRef);
 
-      let previousScore = 0;
-      let highestScore = numericScore;
-
       if (existingSnap.exists()) {
         const existingData = existingSnap.data() || {};
-        previousScore = Number(existingData.score) || 0;
-        highestScore = Math.max(previousScore, numericScore);
+        const alreadyPlayed = Boolean(
+          existingData.has_played === true ||
+          existingData.score_submitted === true ||
+          existingData.played === true ||
+          (existingData.score !== undefined && existingData.score !== null)
+        );
+
+        if (alreadyPlayed) {
+          return jsonResponse({
+            success: false,
+            error: 'Score has already been submitted for this tournament. Each user can only play and submit their score once.',
+            already_played: true,
+            has_played: true,
+            can_play: false,
+            user_id: userId,
+            tournament_id: tournamentId,
+            existing_score: Number(existingData.score) || 0,
+            submitted_at: existingData.submitted_at?.toDate ? existingData.submitted_at.toDate().toISOString() : (existingData.submitted_at || null)
+          }, 409);
+        }
 
         const updatePayload = {
           score: numericScore,
-          highest_score: highestScore,
-          previous_score: previousScore,
+          highest_score: numericScore,
+          has_played: true,
+          played: true,
+          score_submitted: true,
+          submitted_at: serverTimestamp(),
           updated_at: serverTimestamp()
         };
         if (username) updatePayload.username = username;
@@ -258,7 +289,10 @@ export async function POST(request) {
           username: username || 'Player',
           score: numericScore,
           highest_score: numericScore,
-          previous_score: 0,
+          has_played: true,
+          played: true,
+          score_submitted: true,
+          submitted_at: serverTimestamp(),
           created_at: serverTimestamp(),
           updated_at: serverTimestamp()
         }, { merge: true });
@@ -266,12 +300,14 @@ export async function POST(request) {
 
       return jsonResponse({
         success: true,
-        message: 'Tournament participant score updated successfully',
+        message: 'Score submitted successfully. User has completed their single play for this tournament.',
         user_id: userId,
         tournament_id: tournamentId,
         score: numericScore,
-        previous_score: previousScore,
-        highest_score: highestScore,
+        highest_score: numericScore,
+        has_played: true,
+        already_played: true,
+        can_play: false,
         participant_id: docId
       });
     }
@@ -288,6 +324,8 @@ export async function POST(request) {
           success: true,
           has_participated: true,
           hasParticipated: true,
+          has_played: participant.has_played,
+          can_play: participant.can_play,
           user_id: userId,
           tournament_id: tournamentId,
           score: participant.score,
@@ -299,6 +337,8 @@ export async function POST(request) {
         success: true,
         has_participated: false,
         hasParticipated: false,
+        has_played: false,
+        can_play: true,
         user_id: userId,
         tournament_id: tournamentId,
         score: null,
