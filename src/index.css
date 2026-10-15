@@ -503,8 +503,15 @@
 [data-theme="light"] a[class*="bg-[#0071e3]"],
 [data-theme="light"] a[class*="bg-[#0071e3]"] *,
 [data-theme="light"] a[class*="bg-[#0a84ff]"],
-[data-theme="light"] a[class*="bg-[#0a84ff]"] * {
+[data-theme="light"] a[class*="bg-[#0a84ff]"] *,
+[data-theme="light"] .store-badge,
+[data-theme="light"] .store-badge *,
+[data-theme="light"] a[class*="bg-black"],
+[data-theme="light"] a[class*="bg-black"] *,
+[data-theme="light"] a[class*="bg-zinc-900"],
+[data-theme="light"] a[class*="bg-zinc-900"] * {
   color: #ffffff !important;
+  fill: #ffffff !important;
 }
 
 [data-theme="light"] .text-zinc-100:not(.hero-banner-content *) {
