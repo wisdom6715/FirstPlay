@@ -254,6 +254,26 @@ publishers, and real-world value by integrating:
     * One-Click WhatsApp Chat Link (`https://wa.me/...`) allowing admins to open a direct 
       chat with the winner on WhatsApp for custom fulfillment or support.
 
+6.9 24-Hour Competitive Tournaments (AdminTournamentManager)
+  - Third navigation button in the admin sidebar.
+  - One Big Add Card creation flow following the gift wheel pattern.
+  - Creation modal:
+    * Select approved game from catalog (auto-populates game ID, title, and logos).
+    * Configure custom tournament title, description, and rules.
+    * Upload high-resolution cover banner (`tournament_img` with fallback to `game_logo`).
+    * Strict 24-Hour Duration: `ends_at` is automatically computed as `starts_at + 24 hours`.
+    * Prize Pool Input & Live Top 5 Distribution Calculation:
+      - 1st Place (40%)
+      - 2nd Place (25%)
+      - 3rd Place (15%)
+      - 4th Place (10%)
+      - 5th Place (10%)
+  - Conclude & Award: One-click action querying `tournament_participants` for the top 5 
+    highest scorers and issuing secure claims into `prize_redemptions/{tournamentId}_{userId}`.
+  - Retention & Visibility: Expired tournaments remain visible under "Completed (Past)" 
+    so players and admins can review past leaderboards; only deleted when explicitly 
+    removed by an admin.
+
 
 ================================================================================
 7. LEGAL, PRIVACY & COMPLIANCE PAGES
