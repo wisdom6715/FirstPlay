@@ -35,6 +35,15 @@ import {
 import appLogo from '../assets/icon.png';
 import AdminGiftManager from '../components/AdminGiftManager';
 
+const PRESET_REJECTION_REASONS = [
+  'Launch URL is broken, inaccessible, or returns an HTTP error.',
+  'Game does not scale properly or lacks responsive touch controls on mobile devices.',
+  'Game experiences severe freezing, infinite loading, or crashes during play.',
+  'Suspected copyright, trademark, or intellectual property rights issues with assets.',
+  'Inappropriate or offensive content violating FirstPlay community safety guidelines.',
+  'Forced third-party account registration or a paywall required before gameplay.'
+];
+
 export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
@@ -52,6 +61,11 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const [catalogFilter, setCatalogFilter] = useState('all'); // 'all' | 'under_review' | 'live' | 'disabled'
   const [toastMessage, setToastMessage] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(null);
+
+  // Rejection Feedback Modal State
+  const [rejectingSubmission, setRejectingSubmission] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isSubmittingRejection, setIsSubmittingRejection] = useState(false);
 
   // Edit Modal State
   const [editingItem, setEditingItem] = useState(null);
@@ -213,37 +227,65 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     }
   };
 
-  // Reject a game under review
-  const handleReject = async (submission) => {
-    if (!window.confirm(`Reject and delete submission for "${submission.title || submission.name}"?`)) {
+  // Reject Modal Handlers
+  const handleOpenRejectModal = (submission) => {
+    setRejectingSubmission(submission);
+    setRejectionReason('');
+  };
+
+  const handleCloseRejectModal = () => {
+    if (isSubmittingRejection) return;
+    setRejectingSubmission(null);
+    setRejectionReason('');
+  };
+
+  const handleConfirmReject = async (e) => {
+    e?.preventDefault();
+    if (!rejectingSubmission) return;
+
+    const trimmedReason = rejectionReason.trim();
+    if (!trimmedReason) {
+      showToast('Please provide a reason for the rejection so the developer knows what to fix.', 'error');
       return;
     }
-    setActionInProgress(submission.id);
-    try {
-      const targetEmail = submission.email || submission.publisher_email;
-      await catalogService.rejectUnderReviewGame(submission.id);
-      showToast(`Rejected and removed "${submission.title || submission.name}".`, 'info');
 
-      // Send Rejection Notice Email to publisher
+    setIsSubmittingRejection(true);
+    setActionInProgress(rejectingSubmission.id);
+
+    try {
+      const targetEmail = rejectingSubmission.email || rejectingSubmission.publisher_email;
+      const gameTitle = rejectingSubmission.title || rejectingSubmission.name;
+      const studioName = rejectingSubmission.creator || rejectingSubmission.studioName || 'Independent Studio';
+      const gameUrl = rejectingSubmission.url;
+
+      // 1. Remove from under_review collection in Firestore
+      await catalogService.rejectUnderReviewGame(rejectingSubmission.id);
+
+      // 2. Send rejection notice with attached reason to the developer
       if (targetEmail) {
         try {
           await emailService.sendRejectedEmail({
             to: targetEmail,
-            gameTitle: submission.title || submission.name,
-            studioName: submission.creator || submission.studioName || 'Independent Studio',
-            gameUrl: submission.url
+            gameTitle,
+            studioName,
+            gameUrl,
+            reason: trimmedReason
           });
-          console.info(`[AdminDashboard] Rejection notice email sent to ${targetEmail}`);
+          console.info(`[AdminDashboard] Rejection notice with reason dispatched to ${targetEmail}`);
         } catch (mailErr) {
           console.warn('[AdminDashboard] Could not send rejection email notice:', mailErr);
         }
       }
 
+      showToast(`Rejected "${gameTitle}" and dispatched feedback to developer.`, 'info');
+      setRejectingSubmission(null);
+      setRejectionReason('');
       await loadDashboardData();
     } catch (err) {
       console.error('Error rejecting submission:', err);
       showToast('Failed to reject submission.', 'error');
     } finally {
+      setIsSubmittingRejection(false);
       setActionInProgress(null);
     }
   };
@@ -970,7 +1012,7 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                       <button
                         type="button"
                         disabled={actionInProgress === item.id}
-                        onClick={() => handleReject(item)}
+                        onClick={() => handleOpenRejectModal(item)}
                         className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
                         <X size={13} />
@@ -1546,6 +1588,165 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rejection Reason & Feedback Modal */}
+      {rejectingSubmission && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSubmittingRejection) {
+              handleCloseRejectModal();
+            }
+          }}
+        >
+          <div 
+            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reject-modal-title"
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between bg-red-50/70 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-100 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
+                  <AlertCircle size={18} />
+                </div>
+                <div>
+                  <h3 id="reject-modal-title" className="text-sm font-black text-zinc-900 tracking-tight">
+                    Reject Game Submission
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 font-medium">
+                    Attach clear feedback explaining why this entry cannot be approved
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isSubmittingRejection}
+                onClick={handleCloseRejectModal}
+                className="w-8 h-8 rounded-xl bg-white hover:bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-800 transition cursor-pointer disabled:opacity-50"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Modal Body & Form */}
+            <form id="reject-game-form" onSubmit={handleConfirmReject} className="p-6 overflow-y-auto space-y-4 text-left">
+              {/* Submission Information Snapshot */}
+              <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/90 flex items-center gap-3.5">
+                <img
+                  src={rejectingSubmission.logo_url || '/icon.png'}
+                  alt={rejectingSubmission.title || rejectingSubmission.name}
+                  className="w-12 h-12 rounded-xl object-cover bg-white border border-zinc-200 shrink-0 shadow-2xs"
+                />
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-bold text-zinc-900 truncate">
+                    {rejectingSubmission.title || rejectingSubmission.name}
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 truncate">
+                    Publisher: <strong className="text-zinc-700">{rejectingSubmission.creator || rejectingSubmission.studioName || 'Independent Studio'}</strong>
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-zinc-600">
+                    <Mail size={12} className="text-zinc-400 shrink-0" />
+                    <span className="font-mono text-zinc-800 truncate">
+                      {rejectingSubmission.email || rejectingSubmission.publisher_email || 'No recipient email on file'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Preset Rejection Reason Chips */}
+              <div className="space-y-2">
+                <span className="block text-xs font-bold text-zinc-700">
+                  Quick Preset Reasons (Click to append):
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESET_REJECTION_REASONS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setRejectionReason((prev) => {
+                          const trimmed = prev.trim();
+                          if (!trimmed) return preset;
+                          if (trimmed.includes(preset)) return trimmed;
+                          return `${trimmed}\n• ${preset}`;
+                        });
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 text-left transition cursor-pointer active:scale-98"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Textarea for Rejection Reason */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="rejection-reason" className="block text-xs font-bold text-zinc-800">
+                    Reason for Rejection <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    {rejectionReason.length} characters
+                  </span>
+                </div>
+                <textarea
+                  id="rejection-reason"
+                  rows={4}
+                  required
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Type the specific reason why this game is being rejected and what the developer needs to fix before resubmitting..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-300 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition resize-y leading-relaxed font-sans"
+                />
+                <p className="text-[11px] text-zinc-500 leading-normal">
+                  This message is attached to the notification email sent to the publisher so they understand what needs correction.
+                </p>
+              </div>
+
+              {/* Warning Notice Box */}
+              <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-[11px] leading-relaxed flex items-start gap-2">
+                <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Immediate action:</strong> Confirming rejection deletes the pending submission from the queue and dispatches the notice email to the developer.
+                </span>
+              </div>
+            </form>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                disabled={isSubmittingRejection}
+                onClick={handleCloseRejectModal}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                form="reject-game-form"
+                disabled={isSubmittingRejection || !rejectionReason.trim()}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-98 text-white text-xs font-bold transition shadow-sm shadow-red-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmittingRejection ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Rejecting & Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <X size={14} className="stroke-[3]" />
+                    <span>Confirm Rejection & Send Notice</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

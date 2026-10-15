@@ -248,26 +248,32 @@ export async function sendApprovedEmail({ to, gameTitle, studioName, gameUrl, ga
  */
 export async function sendRejectedEmail({ to, gameTitle, studioName, gameUrl, reason }) {
   const subject = `Update regarding your submission: "${gameTitle}" — FirstPlay`;
+  const reasonText = reason && reason.trim() ? reason.trim() : 'Requirements not met at this time';
 
   const html = createEmailLayout({
     badgeText: 'SUBMISSION UPDATE',
-    badgeBg: '#f1f5f9',
-    badgeColor: '#475569',
-    badgeBorder: '#e2e8f0',
+    badgeBg: '#fef2f2',
+    badgeColor: '#dc2626',
+    badgeBorder: '#fecaca',
     title: `Review Status for "${gameTitle}"`,
-    introText: `Thank you for your interest in publishing <strong>${escapeHtml(gameTitle)}</strong> on FirstPlay. After reviewing the submission, our moderation team was unable to publish this entry to the live catalog at this time.`,
+    introText: `Thank you for your interest in publishing <strong>${escapeHtml(gameTitle)}</strong> on FirstPlay. After reviewing the submission, our moderation team was unable to publish this entry to the live catalog at this time.<br><br>
+      <div style="background-color: #fff1f2; border: 1px solid #fecdd3; border-left: 4px solid #e11d48; border-radius: 10px; padding: 14px 16px; margin: 12px 0 16px 0; font-size: 13px; color: #9f1239; line-height: 1.5;">
+        <strong style="color: #881337; font-size: 13px; display: block; margin-bottom: 4px;">Reason for Rejection:</strong>
+        ${escapeHtml(reasonText)}
+      </div>`,
     details: [
       { label: 'Game Title', value: gameTitle },
       { label: 'Studio / Creator', value: studioName || 'Independent Studio' },
       { label: 'Destination URL', value: gameUrl, isLink: true },
-      { label: 'Review Decision', value: reason || 'Requirements not met at this time' }
+      { label: 'Review Decision', value: 'Not Approved' },
+      { label: 'Moderator Feedback', value: reasonText }
     ],
     ctaText: 'Submit an Updated Version',
     ctaUrl: `${SITE_URL}/promote`,
     footerNote: '<strong>Common review guidelines:</strong> Ensure your game URL resolves over HTTPS, loads cleanly on mobile viewports, and operates without unhandled script crashes. You are welcome to resolve any issues and submit again anytime.'
   });
 
-  const text = `Hi ${studioName || 'Developer'},\n\nThank you for submitting "${gameTitle}" to FirstPlay. Our moderation team was unable to approve this entry at this time.\n\nPlease ensure your launch URL resolves over HTTPS and renders cleanly on mobile web browsers. You are always welcome to resolve any issues and submit again.\n\nSubmit again: https://firstplay.app/promote\n\nFirstPlay Team`;
+  const text = `Hi ${studioName || 'Developer'},\n\nThank you for submitting "${gameTitle}" to FirstPlay. Our moderation team was unable to approve this entry at this time.\n\nReason for Rejection:\n${reasonText}\n\nPlease ensure your launch URL resolves over HTTPS and renders cleanly on mobile web browsers. You are always welcome to resolve any issues and submit again.\n\nSubmit an updated version: https://firstplay.app/promote\n\nFirstPlay Team`;
 
   return sendEmail({ to, subject, html, text });
 }
