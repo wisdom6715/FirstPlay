@@ -152,7 +152,7 @@ export default function TournamentsView({
       </div>
 
       {/* Mobile-Only Notice Banner */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-blue-500/10 via-[#0071e3]/10 to-amber-500/10 border border-blue-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 sm:p-5 rounded-2xl bg-blue-500/10 dark:bg-blue-500/10 border border-blue-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start sm:items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-[#0071e3] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-500/20">
             <Smartphone size={20} />
