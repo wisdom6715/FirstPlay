@@ -99,7 +99,7 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
     return approvedGames.find((g) => g.id === selectedGameId);
   }, [approvedGames, selectedGameId]);
 
-  // Auto-fill when game is picked
+  // Auto-fill when game is picked: tournament banner matches the selected game's banner image
   const handleGameChange = (gameId) => {
     setSelectedGameId(gameId);
     const game = approvedGames.find((g) => g.id === gameId);
@@ -110,11 +110,11 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
       if (!description) {
         setDescription(`Compete for the highest score in ${game.name} over 24 hours. The Top 5 players will win a share of the prize pool!`);
       }
-      if (!tournamentImgUrl && !coverPreview) {
-        const fallbackImg = game.banner_url || game.flyer_url || game.logo_url || '';
-        setTournamentImgUrl(fallbackImg);
-        setCoverPreview(fallbackImg);
-      }
+      // The tournament banner should be the banner image of the selected game
+      const gameBanner = game.banner_url || game.flyer || game.banner || game.flyer_url || game.logo_url || '';
+      setTournamentImgUrl(gameBanner);
+      setCoverPreview(gameBanner);
+      setCoverFile(null);
     }
   };
 
@@ -155,9 +155,10 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
     setTournamentName(firstGame ? `${firstGame.name} Grand Prix` : 'FirstPlay Championship');
     setDescription(firstGame ? `Compete for the highest score in ${firstGame.name} over 24 hours. The Top 5 players will win a share of the prize pool!` : 'Compete for the highest score over 24 hours. The Top 5 players split the prize pool!');
     
-    const fallbackImg = firstGame?.banner_url || firstGame?.logo_url || '';
-    setTournamentImgUrl(fallbackImg);
-    setCoverPreview(fallbackImg);
+    // The tournament banner should be the banner image of the selected game
+    const gameBanner = firstGame ? (firstGame.banner_url || firstGame.flyer || firstGame.banner || firstGame.flyer_url || firstGame.logo_url || '') : '';
+    setTournamentImgUrl(gameBanner);
+    setCoverPreview(gameBanner);
     setCoverFile(null);
 
     const now = new Date();
@@ -686,29 +687,48 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
                 />
               </div>
 
-              {/* 3. Cover Image (tournament_img with fallback to game_logo) */}
+              {/* 3. Cover Image (tournament_img from selected game banner) */}
               <div className="space-y-2 p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/90">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-zinc-800">
-                    Tournament Cover Banner (16:9)
+                    Tournament Banner (16:9)
                   </span>
-                  <span className="text-[10px] text-zinc-500">Falls back to game logo</span>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>Selected Game Banner</span>
+                  </span>
                 </div>
 
-                {coverPreview && (
-                  <div className="w-full h-28 rounded-xl overflow-hidden border border-zinc-200 relative bg-zinc-200">
+                {coverPreview ? (
+                  <div className="w-full h-32 rounded-xl overflow-hidden border border-zinc-200 relative bg-zinc-900 shadow-2xs">
                     <img
                       src={coverPreview}
-                      alt="Banner Preview"
+                      alt="Tournament Banner Preview"
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.src = selectedGame?.logo_url || '/icon.png';
+                      }}
                     />
+                    <div className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-bold text-white flex items-center gap-1.5">
+                      <ImageIcon size={11} />
+                      <span>{selectedGame?.name || 'Selected Game'} Banner</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full h-24 rounded-xl border-2 border-dashed border-zinc-200 bg-zinc-100 flex flex-col items-center justify-center text-zinc-400 text-xs">
+                    <ImageIcon size={20} className="mb-1 text-zinc-300" />
+                    <span>Select an approved game above to load its banner</span>
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 flex-wrap">
-                  <label className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-zinc-100 border border-zinc-300 text-xs font-bold text-zinc-800 transition cursor-pointer inline-flex items-center gap-1.5 shadow-2xs">
-                    <Upload size={13} />
-                    <span>Upload Banner Image</span>
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-[11px] text-zinc-500">
+                    Linked to <strong className="text-zinc-700">{selectedGame?.name || 'selected game'}</strong> banner image.
+                  </p>
+                  
+                  <label className="text-[11px] font-bold text-[#0071e3] hover:underline cursor-pointer flex items-center gap-1">
+                    <Upload size={11} />
+                    <span>Upload Custom Override</span>
                     <input
                       type="file"
                       accept="image/*"
@@ -716,24 +736,25 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
                       className="hidden"
                     />
                   </label>
-                  {coverFile && (
-                    <span className="text-xs text-emerald-600 font-semibold truncate max-w-[200px]">
-                      Selected: {coverFile.name}
-                    </span>
-                  )}
                 </div>
 
-                <input
-                  type="url"
-                  value={tournamentImgUrl}
-                  onChange={(e) => {
-                    setTournamentImgUrl(e.target.value);
-                    setCoverPreview(e.target.value);
-                    setCoverFile(null);
-                  }}
-                  placeholder="Or paste image URL (https://...)"
-                  className="w-full px-3 py-1.5 rounded-lg bg-white border border-zinc-200 text-xs text-zinc-700 outline-none font-mono"
-                />
+                {coverFile && (
+                  <div className="flex items-center justify-between text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                    <span>Custom override selected: {coverFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCoverFile(null);
+                        const gameBanner = selectedGame?.banner_url || selectedGame?.flyer || selectedGame?.banner || selectedGame?.flyer_url || selectedGame?.logo_url || '';
+                        setTournamentImgUrl(gameBanner);
+                        setCoverPreview(gameBanner);
+                      }}
+                      className="text-red-500 hover:text-red-700 font-bold text-[10px] cursor-pointer"
+                    >
+                      Reset to Game Banner
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* 4. Description & Rules */}
