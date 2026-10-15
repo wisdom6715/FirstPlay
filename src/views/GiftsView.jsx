@@ -1,103 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import SpinWheel from '../components/SpinWheel';
+import React, { useState } from 'react';
 import CongratulationsModal from '../components/CongratulationsModal';
 import { rewardService } from '../services/rewardService';
 import { 
-  RotateCw, 
-  Clock, 
   Gift, 
   Copy, 
   Check, 
   ExternalLink,
   Sparkles,
-  AlertCircle
+  Smartphone,
+  CheckCircle2
 } from 'lucide-react';
 import { copyToClipboard } from '../utils/clipboardUtils';
 
-export default function GiftsView({ onNavigateTab, onNavigateGames }) {
-  const [segments, setSegments] = useState([]);
-  const [isLoadingWheel, setIsLoadingWheel] = useState(true);
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [targetOutcome, setTargetOutcome] = useState(null);
-  const [wonModalItem, setWonModalItem] = useState(null);
+const PLAYSTORE_URL = 'https://play.google.com/store/apps/details?id=com.firstplay.firstplay_app';
+const APP_STORE_URL = 'https://apps.apple.com/app/firstplay/id6470000000';
+
+/**
+ * High-precision Google Play triangular vector icon
+ */
+function GooglePlayIcon({ className = "w-4 h-4 shrink-0" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path d="M3.609 1.814L13.792 12 3.61 22.186a2.072 2.072 0 0 1-.22-.962V2.776c0-.36.08-.69.22-.962z" fill="#2196F3" />
+      <path d="M17.432 8.36L5.342.3c-.562-.375-1.196-.4-1.733-.2L13.792 12l3.64-3.64z" fill="#4CAF50" />
+      <path d="M13.792 12l-10.183 11.9c.537.2 1.17.175 1.733-.2l12.09-8.06-3.64-3.64z" fill="#F44336" />
+      <path d="M21.708 11.23l-4.276-2.87-3.64 3.64 3.64 3.64 4.276-2.87c.78-.52 1.292-1.35 1.292-2.27s-.512-1.75-1.292-2.27z" fill="#FFEB3B" />
+    </svg>
+  );
+}
+
+/**
+ * Authentic Apple silhouette icon
+ */
+function AppleIcon({ className = "w-4 h-4 shrink-0" }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="#ffffff" style={{ fill: '#ffffff' }} aria-hidden="true">
+      <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 1.01-2.87-.9.04-2 .61-2.65 1.36-.58.65-1.08 1.71-.94 2.74 1.01.08 2.02-.54 2.58-1.23z" fill="#ffffff" />
+    </svg>
+  );
+}
+
+export default function GiftsView({ onNavigateTab }) {
   const [myGifts, setMyGifts] = useState(() => rewardService.getLocalWonGifts());
-  const [playtimeSeconds, setPlaytimeSeconds] = useState(() => rewardService.getPlaytimeSeconds());
   const [copiedCode, setCopiedCode] = useState(null);
-  const [errorMessage, setErrorMessage] = useState(null);
-
-  // Playtime requirement: 2 hours = 7200 seconds
-  const REQUIRED_PLAYTIME_SECONDS = 7200;
-  const isPlaytimeUnlocked = playtimeSeconds >= REQUIRED_PLAYTIME_SECONDS;
-
-  // Load active 6-segment configuration on mount
-  useEffect(() => {
-    async function fetchWheel() {
-      setIsLoadingWheel(true);
-      try {
-        const res = await rewardService.getWheelConfig();
-        if (res?.segments && Array.isArray(res.segments) && res.segments.length === 6) {
-          setSegments(res.segments);
-        }
-      } catch (err) {
-        console.error('[GiftsView] Failed to load wheel:', err);
-      } finally {
-        setIsLoadingWheel(false);
-      }
-    }
-    fetchWheel();
-  }, []);
+  const [wonModalItem, setWonModalItem] = useState(null);
 
   const refreshGifts = () => {
     setMyGifts(rewardService.getLocalWonGifts());
-  };
-
-  const handleStartSpin = async () => {
-    if (isSpinning) return;
-    setErrorMessage(null);
-    setIsSpinning(true);
-
-    try {
-      // Authoritative spin resolution on backend
-      const res = await rewardService.executeSpin('player_session', 'Player');
-      
-      if (!res.success) {
-        setErrorMessage(res.error || 'Failed to spin wheel. Please try again.');
-        setIsSpinning(false);
-        return;
-      }
-
-      // Pass outcome to SpinWheel component to animate
-      setTargetOutcome({
-        segmentIndex: res.segmentIndex,
-        segment: res.segment,
-        reward: res.reward
-      });
-    } catch (err) {
-      console.error('[GiftsView] Spin error:', err);
-      setErrorMessage('Network error while spinning. Please try again.');
-      setIsSpinning(false);
-    }
-  };
-
-  const handleSpinEnd = (wonSegment) => {
-    setIsSpinning(false);
-    const currentTarget = targetOutcome;
-    setTargetOutcome(null);
-
-    refreshGifts();
-
-    if (currentTarget?.reward) {
-      // Won positive reward with generated 24h code
-      setWonModalItem({
-        ...wonSegment,
-        code: currentTarget.reward.redemptionCode,
-        redemptionCode: currentTarget.reward.redemptionCode,
-        gift: `${currentTarget.reward.quantity} ${currentTarget.reward.unit || 'MB'}`
-      });
-    } else {
-      // 0 MB or zero outcome
-      setWonModalItem(wonSegment);
-    }
   };
 
   const handleCopyCode = async (code) => {
@@ -117,11 +66,6 @@ export default function GiftsView({ onNavigateTab, onNavigateGames }) {
     }
   };
 
-  const handleGrantTestPlaytime = () => {
-    const updated = rewardService.addPlaytimeSeconds(REQUIRED_PLAYTIME_SECONDS);
-    setPlaytimeSeconds(updated);
-  };
-
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-12 py-8 space-y-8 select-none">
       
@@ -129,87 +73,97 @@ export default function GiftsView({ onNavigateTab, onNavigateGames }) {
       <div className="text-center max-w-xl mx-auto space-y-2">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 text-[#0071e3] dark:text-[#0a84ff] text-xs font-bold">
           <Sparkles size={13} />
-          <span>Dynamic Spin & Win</span>
+          <span>Fortune Gifts & Rewards</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-black text-zinc-900 dark:text-white tracking-tight">
           Rewards Wheel
         </h1>
         <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 font-medium">
-          Play any game for 2 hours to unlock your daily lucky spin
+          Spin the lucky wheel and win mobile data and gifts on FirstPlay
         </p>
       </div>
 
-      {errorMessage && (
-        <div className="max-w-md mx-auto p-3.5 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400 text-xs font-semibold flex items-center gap-2.5">
-          <AlertCircle size={16} className="shrink-0" />
-          <span>{errorMessage}</span>
-        </div>
-      )}
+      {/* =========================================================================
+          MOBILE APP EXCLUSIVE DOWNLOAD BANNER (REPLACES THE WEB SPIN WHEEL)
+          Matches tournament behavior: Spin & Win is exclusively inside the mobile app
+          ========================================================================= */}
+      <div className="max-w-xl mx-auto">
+        <div className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-[#16161b] p-6 sm:p-8 text-center space-y-5 shadow-sm text-zinc-900 dark:text-white relative overflow-hidden">
+          {/* Subtle Ambient Glow */}
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-56 h-32 rounded-full blur-3xl pointer-events-none bg-blue-500/10 dark:bg-blue-600/15" />
 
-      {/* Six-Segment Wheel Section */}
-      <div className="flex flex-col items-center justify-center">
-        {isLoadingWheel ? (
-          <div className="w-[340px] h-[340px] flex flex-col items-center justify-center gap-3">
-            <div className="w-8 h-8 border-2 border-[#0071e3] border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">Loading rewards...</p>
+          {/* Icon Badge */}
+          <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-500/15 border border-blue-200 dark:border-blue-500/30 text-[#0071e3] dark:text-[#0a84ff] flex items-center justify-center mx-auto shadow-sm">
+            <Smartphone size={28} />
           </div>
-        ) : (
-          <SpinWheel
-            segments={segments}
-            isSpinning={isSpinning}
-            targetOutcome={targetOutcome}
-            onSpinStart={handleStartSpin}
-            onSpinEnd={handleSpinEnd}
-            disabled={isSpinning}
-          />
-        )}
 
-        {/* Action Button & Gameplay Progress */}
-        <div className="w-full max-w-md mt-6 px-4 flex flex-col items-center gap-3">
-          <button
-            type="button"
-            onClick={handleStartSpin}
-            disabled={isSpinning || isLoadingWheel}
-            className={`w-full h-12 rounded-2xl flex items-center justify-center gap-2.5 font-bold text-xs sm:text-sm transition-all shadow-md cursor-pointer ${
-              isSpinning || isLoadingWheel
-                ? 'bg-zinc-100 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-500 cursor-not-allowed border border-zinc-200 dark:border-white/5'
-                : 'bg-[#0071e3] hover:bg-[#0077ed] text-white active:scale-[0.99] shadow-blue-500/20'
-            }`}
-          >
-            <RotateCw size={16} className={isSpinning ? 'animate-spin' : ''} />
-            <span>
-              {isSpinning 
-                ? 'Spinning the Wheel...' 
-                : isPlaytimeUnlocked 
-                ? 'Spin Now!' 
-                : 'Play 2h to Unlock Spin'}
+          {/* Headline & Description */}
+          <div className="space-y-1.5">
+            <span className="inline-block px-2.5 py-0.5 rounded-full bg-[#0071e3]/15 text-[#0071e3] dark:text-blue-400 text-[10px] font-black uppercase tracking-wider">
+              Mobile App Exclusive
             </span>
-          </button>
 
-          {/* Playtime Progress & Instant Spin Unlock */}
-          <div className="flex items-center justify-between w-full text-[11px] text-zinc-500 dark:text-zinc-400 px-1">
-            <span className="flex items-center gap-1.5 font-medium">
-              <Clock size={13} className="text-[#0071e3] dark:text-[#0a84ff]" />
-              <span>
-                Playtime: {Math.floor(playtimeSeconds / 3600)}h {Math.floor((playtimeSeconds % 3600) / 60)}m / 2h
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white">
+              Download the Mobile App to Spin
+            </h2>
+
+            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed max-w-sm mx-auto">
+              <strong>The Rewards Wheel can only be spun from the mobile app, not the web app.</strong> Play games, unlock daily spin passes, and win real rewards.
+            </p>
+          </div>
+
+          {/* Feature Highlights */}
+          <div className="text-left space-y-2 text-xs text-zinc-600 dark:text-zinc-300 bg-blue-50/60 dark:bg-blue-500/5 border border-blue-200/60 dark:border-blue-500/10 p-3.5 rounded-2xl">
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+              <span>Daily lucky spins unlocked by cumulative gameplay</span>
+            </div>
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+              <span>Instant mobile data and airtime awards across all networks</span>
+            </div>
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+              <span>Direct voucher redemption with instant fulfillment</span>
+            </div>
+          </div>
+
+          {/* Store Download Buttons: Download on Playstore and Download on App Store */}
+          <div className="space-y-2.5 pt-1">
+            {/* Download on Playstore */}
+            <a
+              href={PLAYSTORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-keep-white="true"
+              style={{ backgroundColor: '#000000', color: '#ffffff' }}
+              className="store-badge w-full py-3.5 px-4 rounded-2xl bg-black hover:bg-zinc-900 border border-white/15 text-white flex items-center justify-center gap-2.5 shadow-md shadow-black/20 cursor-pointer active:scale-[0.98] transition-all"
+            >
+              <GooglePlayIcon className="w-5 h-5 shrink-0" />
+              <span data-keep-white="true" style={{ color: '#ffffff' }} className="text-xs sm:text-sm font-bold text-white tracking-tight">
+                Download on Playstore
               </span>
-            </span>
+            </a>
 
-            {!isPlaytimeUnlocked && (
-              <button
-                type="button"
-                onClick={handleGrantTestPlaytime}
-                className="text-[#0071e3] dark:text-[#0a84ff] hover:underline transition-colors cursor-pointer text-[11px] font-bold"
-                title="Instant test pass for gameplay unlocked status"
-              >
-                Claim instant spin pass
-              </button>
-            )}
+            {/* Download on App Store */}
+            <a
+              href={APP_STORE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              data-keep-white="true"
+              style={{ backgroundColor: '#000000', color: '#ffffff' }}
+              className="store-badge w-full py-3.5 px-4 rounded-2xl bg-black hover:bg-zinc-900 border border-white/15 text-white flex items-center justify-center gap-2.5 shadow-md shadow-black/20 cursor-pointer active:scale-[0.98] transition-all"
+            >
+              <AppleIcon className="w-5 h-5 shrink-0" />
+              <span data-keep-white="true" style={{ color: '#ffffff' }} className="text-xs sm:text-sm font-bold text-white tracking-tight">
+                Download on App Store
+              </span>
+            </a>
           </div>
         </div>
       </div>
 
-      {/* "My Won Gifts" Section */}
+      {/* "My Won Gifts" Section (Remains visible so players can review & redeem won prizes on web) */}
       <div className="max-w-xl mx-auto space-y-4 pt-4 border-t border-zinc-200 dark:border-white/[0.08]">
         <div className="flex items-center justify-between border-b border-zinc-200 dark:border-white/[0.06] pb-2">
           <div className="flex items-center gap-2">
@@ -224,7 +178,7 @@ export default function GiftsView({ onNavigateTab, onNavigateGames }) {
         {myGifts.length === 0 ? (
           <div className="p-6 rounded-2xl bg-zinc-50 dark:bg-[#16161a]/60 border border-zinc-200 dark:border-white/[0.06] text-center space-y-1">
             <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">No rewards won yet</p>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Spin the wheel to win instant mobile data and gifts.</p>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Spin the wheel on the FirstPlay mobile app to win instant mobile data and gifts.</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -300,7 +254,7 @@ export default function GiftsView({ onNavigateTab, onNavigateGames }) {
 
       </div>
 
-      {/* Won Congratulations Modal */}
+      {/* Won Congratulations Modal (if needed for any direct award callbacks) */}
       {wonModalItem && (
         <CongratulationsModal
           wonItem={wonModalItem}

@@ -85,7 +85,8 @@ export default function AdminGiftManager({
     unit: 'MB',
     description: '',
     network: '',
-    // 5 customizable outcomes for indices 1 through 5 (index 0 is locked at 0)
+    // All 6 customizable outcomes for indices 0 through 5
+    outcome1: 50,
     outcome2: 100,
     outcome3: 250,
     outcome4: 500,
@@ -254,7 +255,7 @@ export default function AdminGiftManager({
   const handleOpenGiftModal = (gift = null) => {
     if (gift) {
       setEditingGift(gift);
-      const outcomes = Array.isArray(gift.outcomes) ? gift.outcomes : [0, 100, 250, 500, 1024, 2048];
+      const outcomes = Array.isArray(gift.outcomes) ? gift.outcomes : [50, 100, 250, 500, 1024, 2048];
       setGiftForm({
         gift_name: gift.gift_name || gift.name || '',
         category_id: gift.category_id || '',
@@ -262,6 +263,7 @@ export default function AdminGiftManager({
         unit: gift.unit || 'MB',
         description: gift.description || '',
         network: gift.network || '',
+        outcome1: outcomes[0] !== undefined ? outcomes[0] : 50,
         outcome2: outcomes[1] !== undefined ? outcomes[1] : 100,
         outcome3: outcomes[2] !== undefined ? outcomes[2] : 250,
         outcome4: outcomes[3] !== undefined ? outcomes[3] : 500,
@@ -279,6 +281,7 @@ export default function AdminGiftManager({
         unit: firstCat ? (firstCat.unit || 'MB') : 'MB',
         description: 'Standard rewards wheel outcomes',
         network: '',
+        outcome1: 50,
         outcome2: 100,
         outcome3: 250,
         outcome4: 500,
@@ -311,9 +314,9 @@ export default function AdminGiftManager({
 
     setIsSavingGift(true);
     try {
-      // Invariant: Outcome 1 is ALWAYS 0 (win nothing)
+      // Admin inputs all 6 slots; smallest number will function as "Try Again"
       const cleanOutcomes = [
-        0,
+        Number(giftForm.outcome1) || 0,
         Number(giftForm.outcome2) || 0,
         Number(giftForm.outcome3) || 0,
         Number(giftForm.outcome4) || 0,
@@ -558,7 +561,7 @@ export default function AdminGiftManager({
                 <span>Wheel Gift Configuration</span>
               </h2>
               <p className="text-xs text-zinc-600 mt-0.5">
-                The active gift configured here populates the player spinner wheel. Segment 1 is permanently locked at 0 (Win Nothing / Try Again).
+                The active gift configured here populates the player spinner wheel across all 6 slots. The smallest number entered functions as the "Try Again" outcome.
               </p>
             </div>
           </div>
@@ -589,7 +592,7 @@ export default function AdminGiftManager({
                     Add Spinner Gift
                   </h3>
                   <p className="text-xs text-zinc-500 max-w-sm">
-                    Click here to select a gift category and configure the 5 reward quantities for the 6-segment wheel.
+                    Click here to select a gift category and configure all 6 reward slots for the wheel.
                   </p>
                 </div>
 
@@ -664,45 +667,54 @@ export default function AdminGiftManager({
                   <span className="text-xs font-extrabold text-zinc-700 uppercase tracking-wider">
                     6-Segment Wheel Outcomes
                   </span>
-                  <span className="text-[11px] text-zinc-400 font-medium">
-                    Segment #1 is locked at 0
+                  <span className="text-[11px] text-zinc-500 font-medium">
+                    Smallest number acts as "Try Again"
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                  {/* Segment 1: Fixed Zero */}
-                  <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200 text-center space-y-1 relative">
-                    <span className="w-5 h-5 rounded-full bg-zinc-200 text-zinc-700 text-[10px] font-black flex items-center justify-center mx-auto">
-                      1
-                    </span>
-                    <div className="text-base font-black text-zinc-900 flex items-center justify-center gap-1">
-                      <span>0</span>
-                      <span className="text-[11px] text-zinc-500 font-bold">{currentGift.unit || 'MB'}</span>
-                    </div>
-                    <span className="text-[10px] font-extrabold text-zinc-600 block uppercase">
-                      Win Nothing
-                    </span>
-                  </div>
+                {(() => {
+                  const outcomes = Array.isArray(currentGift.outcomes) && currentGift.outcomes.length === 6
+                    ? currentGift.outcomes
+                    : [50, 100, 250, 500, 1024, 2048];
+                  const minVal = Math.min(...outcomes);
 
-                  {/* Segments 2 through 6 */}
-                  {(currentGift.outcomes || [0, 100, 250, 500, 1024, 2048]).slice(1, 6).map((val, idx) => (
-                    <div 
-                      key={idx + 2}
-                      className="p-3.5 rounded-2xl bg-blue-50/60 border border-blue-100 text-center space-y-1"
-                    >
-                      <span className="w-5 h-5 rounded-full bg-[#0071e3] text-white text-[10px] font-black flex items-center justify-center mx-auto shadow-xs">
-                        {idx + 2}
-                      </span>
-                      <div className="text-base font-black text-[#0071e3] flex items-center justify-center gap-1">
-                        <span>{val}</span>
-                        <span className="text-[11px] text-blue-700 font-bold">{currentGift.unit || 'MB'}</span>
-                      </div>
-                      <span className="text-[10px] font-bold text-zinc-600 block uppercase">
-                        Segment #{idx + 2}
-                      </span>
+                  return (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                      {outcomes.map((val, idx) => {
+                        const isSmallest = val === minVal;
+                        return (
+                          <div 
+                            key={idx + 1}
+                            className={`p-3.5 rounded-2xl border text-center space-y-1 ${
+                              isSmallest 
+                                ? 'bg-amber-50/70 border-amber-200' 
+                                : 'bg-blue-50/60 border-blue-100'
+                            }`}
+                          >
+                            <span className={`w-5 h-5 rounded-full text-[10px] font-black flex items-center justify-center mx-auto shadow-xs ${
+                              isSmallest ? 'bg-amber-500 text-white' : 'bg-[#0071e3] text-white'
+                            }`}>
+                              {idx + 1}
+                            </span>
+                            <div className={`text-base font-black flex items-center justify-center gap-1 ${
+                              isSmallest ? 'text-amber-800' : 'text-[#0071e3]'
+                            }`}>
+                              <span>{val}</span>
+                              <span className={`text-[11px] font-bold ${isSmallest ? 'text-amber-700' : 'text-blue-700'}`}>
+                                {currentGift.unit || 'MB'}
+                              </span>
+                            </div>
+                            <span className={`text-[10px] font-extrabold block uppercase tracking-tight ${
+                              isSmallest ? 'text-amber-700' : 'text-zinc-600'
+                            }`}>
+                              {isSmallest ? 'Lowest (Try Again)' : `Segment #${idx + 1}`}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -1096,38 +1108,33 @@ export default function AdminGiftManager({
 
               {/* =============================================================
                   THE 6 WHEEL OUTCOMES SECTION
-                  Outcome 1 is permanently locked at 0.
-                  Outcomes 2 through 6 are entered by the admin.
+                  Admin inputs all 6 slots.
+                  The smallest number entered automatically functions as the "Try Again" outcome.
                   ============================================================= */}
               <div className="pt-2 border-t border-zinc-100 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-extrabold text-zinc-900">
-                    Wheel Outcomes (6 Segments)
+                    Wheel Outcomes (All 6 Segments)
                   </span>
                   <span className="text-[11px] text-zinc-500 font-medium">
-                    Segment #1 is locked at 0
+                    Lowest number acts as "Try Again"
                   </span>
                 </div>
 
-                {/* Outcome 1: Locked Zero */}
-                <div className="p-3 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-zinc-300 text-zinc-700 text-[10px] font-black flex items-center justify-center">
-                      1
-                    </span>
-                    <span className="text-xs font-bold text-zinc-700">
-                      Segment #1 (Locked: Win Nothing)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-zinc-200 text-zinc-700 text-xs font-mono font-bold">
-                    <Lock size={12} className="text-zinc-500" />
-                    <span>0 {giftForm.unit || 'MB'}</span>
-                  </div>
+                <div className="p-3 rounded-xl bg-blue-50/70 border border-blue-200 text-[11px] text-blue-900 leading-relaxed space-y-1">
+                  <p className="font-bold flex items-center gap-1.5">
+                    <Sparkles size={13} className="text-[#0071e3]" />
+                    <span>Dynamic 6-Slot Configuration</span>
+                  </p>
+                  <p className="text-zinc-600">
+                    Configure all 6 wheel slots. The player wheel will dynamically treat whichever number is the lowest across all 6 slots as the "Try Again" outcome (landing on it issues no prize code).
+                  </p>
                 </div>
 
-                {/* Outcomes 2 to 6: Inputs */}
+                {/* All 6 Outcomes Inputs */}
                 <div className="space-y-2">
                   {[
+                    { key: 'outcome1', seg: 1, placeholder: '50' },
                     { key: 'outcome2', seg: 2, placeholder: '100' },
                     { key: 'outcome3', seg: 3, placeholder: '250' },
                     { key: 'outcome4', seg: 4, placeholder: '500' },
@@ -1144,7 +1151,7 @@ export default function AdminGiftManager({
                       <div className="relative flex-1">
                         <input
                           type="number"
-                          min="0"
+                          min="1"
                           value={giftForm[key]}
                           onChange={(e) => setGiftForm({ ...giftForm, [key]: Number(e.target.value) })}
                           placeholder={placeholder}

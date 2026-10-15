@@ -24,33 +24,31 @@ const DEFAULT_SIX_ZEROS = [
 
 /**
  * Builds 6 segment objects from raw outcomes array.
- * Invariant: Segment 1 (index 0) is always 0 reward.
+ * Dynamically finds the smallest number and tags it as the "Try Again" outcome.
  */
 function buildSegmentsFromOutcomes(outcomes = [], giftName = 'Reward', giftType = 'data', unit = 'MB', network = null) {
   const colors = ['#0f172a', '#0066ff', '#ffffff', '#0f172a', '#0066ff', '#ffffff'];
   const textColors = ['#ffffff', '#ffffff', '#0a0a0f', '#ffffff', '#ffffff', '#0a0a0f'];
 
-  // Pad or trim to exactly 6 values, ensuring index 0 is 0
-  const cleanOutcomes = [
-    0,
-    Number(outcomes[1]) || 0,
-    Number(outcomes[2]) || 0,
-    Number(outcomes[3]) || 0,
-    Number(outcomes[4]) || 0,
-    Number(outcomes[5]) || 0
-  ];
+  // Pad or trim to exactly 6 values
+  const cleanOutcomes = Array.from({ length: 6 }, (_, i) => Number(outcomes[i]) || 0);
+  const minAmount = Math.min(...cleanOutcomes);
 
-  return cleanOutcomes.map((amt, idx) => ({
-    id: `seg_${idx + 1}`,
-    amount: amt,
-    amountLabel: `${amt} ${unit || 'MB'}`,
-    subLabel: idx === 0 ? 'Try Again' : giftName,
-    giftType,
-    unit: unit || 'MB',
-    network: network || null,
-    color: colors[idx],
-    textColor: textColors[idx]
-  }));
+  return cleanOutcomes.map((amt, idx) => {
+    const isSmallest = amt === minAmount;
+    return {
+      id: `seg_${idx + 1}`,
+      amount: amt,
+      amountLabel: `${amt} ${unit || 'MB'}`,
+      subLabel: isSmallest ? 'Try Again' : giftName,
+      isSmallest,
+      giftType,
+      unit: unit || 'MB',
+      network: network || null,
+      color: colors[idx],
+      textColor: textColors[idx]
+    };
+  });
 }
 
 /**
@@ -149,17 +147,10 @@ export async function POST(request) {
     const cleanType = (gift_type || category_name || 'data').toLowerCase().trim();
     const cleanName = gift_name.trim();
 
-    // Ensure array of 6 numbers where index 0 is permanently 0
-    let cleanOutcomes = [0, 0, 0, 0, 0, 0];
-    if (Array.isArray(outcomes)) {
-      cleanOutcomes = [
-        0, // Outcome 1 is permanently zero per user specification
-        Number(outcomes[1]) || 0,
-        Number(outcomes[2]) || 0,
-        Number(outcomes[3]) || 0,
-        Number(outcomes[4]) || 0,
-        Number(outcomes[5]) || 0
-      ];
+    // Ensure array of 6 numbers entered by admin
+    let cleanOutcomes = [50, 100, 250, 500, 1024, 2048];
+    if (Array.isArray(outcomes) && outcomes.length === 6) {
+      cleanOutcomes = outcomes.map((o) => Number(o) || 0);
     }
 
     const segments = buildSegmentsFromOutcomes(cleanOutcomes, cleanName, cleanType, cleanUnit, network);
