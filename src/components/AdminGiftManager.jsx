@@ -314,7 +314,7 @@ export default function AdminGiftManager({
 
     setIsSavingGift(true);
     try {
-      // Admin inputs all 6 slots; smallest number will function as "Try Again"
+      // Admin inputs all 6 slots; lowest number receives base probability (30%)
       const cleanOutcomes = [
         Number(giftForm.outcome1) || 0,
         Number(giftForm.outcome2) || 0,
@@ -561,7 +561,7 @@ export default function AdminGiftManager({
                 <span>Wheel Gift Configuration</span>
               </h2>
               <p className="text-xs text-zinc-600 mt-0.5">
-                The active gift configured here populates the player spinner wheel across all 6 slots. The smallest number entered functions as the "Try Again" outcome.
+                The active gift configured here populates the player spinner wheel across all 6 slots. The lowest number entered receives the base probability weighting (30%).
               </p>
             </div>
           </div>
@@ -668,7 +668,7 @@ export default function AdminGiftManager({
                     6-Segment Wheel Outcomes
                   </span>
                   <span className="text-[11px] text-zinc-500 font-medium">
-                    Smallest number acts as "Try Again"
+                    Lowest number receives base probability (30%)
                   </span>
                 </div>
 
@@ -707,7 +707,7 @@ export default function AdminGiftManager({
                             <span className={`text-[10px] font-extrabold block uppercase tracking-tight ${
                               isSmallest ? 'text-amber-700' : 'text-zinc-600'
                             }`}>
-                              {isSmallest ? 'Lowest (Try Again)' : `Segment #${idx + 1}`}
+                              {isSmallest ? 'Lowest Value' : `Segment #${idx + 1}`}
                             </span>
                           </div>
                         );
@@ -1109,7 +1109,7 @@ export default function AdminGiftManager({
               {/* =============================================================
                   THE 6 WHEEL OUTCOMES SECTION
                   Admin inputs all 6 slots.
-                  The smallest number entered automatically functions as the "Try Again" outcome.
+                  The lowest number entered receives the base probability weighting (30%).
                   ============================================================= */}
               <div className="pt-2 border-t border-zinc-100 space-y-3">
                 <div className="flex items-center justify-between">
@@ -1117,7 +1117,7 @@ export default function AdminGiftManager({
                     Wheel Outcomes (All 6 Segments)
                   </span>
                   <span className="text-[11px] text-zinc-500 font-medium">
-                    Lowest number acts as "Try Again"
+                    Lowest number receives base probability (30%)
                   </span>
                 </div>
 
@@ -1127,7 +1127,7 @@ export default function AdminGiftManager({
                     <span>Dynamic 6-Slot Configuration</span>
                   </p>
                   <p className="text-zinc-600">
-                    Configure all 6 wheel slots. The player wheel will dynamically treat whichever number is the lowest across all 6 slots as the "Try Again" outcome (landing on it issues no prize code).
+                    Configure all 6 wheel slots. All slots award real prizes; whichever number is the lowest across all 6 slots will carry the base probability weighting (30%).
                   </p>
                 </div>
 

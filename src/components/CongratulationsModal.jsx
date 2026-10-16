@@ -17,7 +17,7 @@ export default function CongratulationsModal({
 
   if (!wonItem) return null;
 
-  const isZero = !wonItem.code || wonItem.isSmallest === true || wonItem.amount === 0 || wonItem.amount_mb === 0;
+  const isZero = (!wonItem.code && !wonItem.redemptionCode) || wonItem.amount === 0 || wonItem.amount_mb === 0;
   const giftName = wonItem.gift || `${wonItem.amountLabel || wonItem.amount} ${wonItem.subLabel || 'Data'}`;
   const code = wonItem.code || wonItem.redemptionCode || '';
 

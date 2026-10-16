@@ -73,7 +73,7 @@ export async function POST(request) {
     // Default outcomes if wheel not yet configured by admin
     if (!activeSegments || activeSegments.length !== 6) {
       activeSegments = [
-        { id: 'seg_1', amount: 50, amountLabel: '50 MB', subLabel: 'Try Again', isSmallest: true, giftType: 'data', unit: 'MB', color: '#0f172a', textColor: '#ffffff' },
+        { id: 'seg_1', amount: 50, amountLabel: '50 MB', subLabel: 'Data', isSmallest: true, giftType: 'data', unit: 'MB', color: '#0f172a', textColor: '#ffffff' },
         { id: 'seg_2', amount: 100, amountLabel: '100 MB', subLabel: 'Data', giftType: 'data', unit: 'MB', color: '#0066ff', textColor: '#ffffff' },
         { id: 'seg_3', amount: 250, amountLabel: '250 MB', subLabel: 'Data', giftType: 'data', unit: 'MB', color: '#ffffff', textColor: '#0a0a0f' },
         { id: 'seg_4', amount: 500, amountLabel: '500 MB', subLabel: 'Data', giftType: 'data', unit: 'MB', color: '#0f172a', textColor: '#ffffff' },
@@ -83,52 +83,37 @@ export async function POST(request) {
     }
 
     // 2. Authoritative Server-Side Outcome Resolution
-    // Identify smallest number in the slots (treated the same way 0 was treated)
+    // Identify lowest number in the slots (probability of 0 applied to the lowest value)
     const amounts = activeSegments.map(s => Number(s.amount) || 0);
     const minAmount = Math.min(...amounts);
 
     const smallestIndices = activeSegments
       .map((s, i) => ((Number(s.amount) || 0) === minAmount ? i : -1))
       .filter(i => i !== -1);
-    const positiveRewardIndices = activeSegments
+    const higherRewardIndices = activeSegments
       .map((s, i) => ((Number(s.amount) || 0) > minAmount ? i : -1))
       .filter(i => i !== -1);
 
     let chosenSegmentIndex = 0;
     const randomFloat = Math.random();
 
-    if (positiveRewardIndices.length === 0) {
+    if (higherRewardIndices.length === 0) {
       // All slots have identical amount
       chosenSegmentIndex = Math.floor(Math.random() * 6);
     } else {
-      // 30% chance lands on the smallest number (treated like 0), 70% chance of winning one of the higher rewards
+      // 30% chance lands on the lowest number (same probability as zero before), 70% chance across the higher rewards
       if (randomFloat < 0.30 && smallestIndices.length > 0) {
         chosenSegmentIndex = smallestIndices[Math.floor(Math.random() * smallestIndices.length)];
-      } else if (positiveRewardIndices.length > 0) {
-        chosenSegmentIndex = positiveRewardIndices[Math.floor(Math.random() * positiveRewardIndices.length)];
+      } else if (higherRewardIndices.length > 0) {
+        chosenSegmentIndex = higherRewardIndices[Math.floor(Math.random() * higherRewardIndices.length)];
       } else {
         chosenSegmentIndex = Math.floor(Math.random() * 6);
       }
     }
 
     const wonSegment = activeSegments[chosenSegmentIndex];
-    const isSmallestNumber = (Number(wonSegment.amount) || 0) === minAmount;
 
-    // The smallest number is treated the exact same way 0 was treated: no redemption code generated
-    if (isSmallestNumber) {
-      return NextResponse.json({
-        success: true,
-        segmentIndex: chosenSegmentIndex,
-        segment: {
-          ...wonSegment,
-          isSmallest: true,
-          subLabel: wonSegment.subLabel || 'Try Again'
-        },
-        reward: null
-      });
-    }
-
-    // 3. For positive reward: Generate unique code and store in `redemptions` collection
+    // 3. Generate unique code and store in `redemptions` collection (all winning slots award prizes, including lowest value)
     let uniqueCode = generateSecureCode();
     const now = new Date();
     // Exactly 24 hours expiry from creation time

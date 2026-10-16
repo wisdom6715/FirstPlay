@@ -24,7 +24,7 @@ const DEFAULT_SIX_ZEROS = [
 
 /**
  * Builds 6 segment objects from raw outcomes array.
- * Dynamically finds the smallest number and tags it as the "Try Again" outcome.
+ * Tags the lowest number so its probability can be calculated, but awards the actual prize.
  */
 function buildSegmentsFromOutcomes(outcomes = [], giftName = 'Reward', giftType = 'data', unit = 'MB', network = null) {
   const colors = ['#0f172a', '#0066ff', '#ffffff', '#0f172a', '#0066ff', '#ffffff'];
@@ -40,7 +40,7 @@ function buildSegmentsFromOutcomes(outcomes = [], giftName = 'Reward', giftType 
       id: `seg_${idx + 1}`,
       amount: amt,
       amountLabel: `${amt} ${unit || 'MB'}`,
-      subLabel: isSmallest ? 'Try Again' : giftName,
+      subLabel: giftName,
       isSmallest,
       giftType,
       unit: unit || 'MB',

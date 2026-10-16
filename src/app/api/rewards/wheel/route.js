@@ -6,7 +6,7 @@ import { doc, getDoc, collection, getDocs, query, where, setDoc, serverTimestamp
  * Default 6-segment wheel initialized to zero outcomes as required by PRD Section 3
  */
 export const DEFAULT_SIX_SEGMENTS = [
-  { id: 'seg_1', amount: 50, amountLabel: '50 MB', subLabel: 'Try Again', isSmallest: true, giftType: 'data', unit: 'MB', color: '#0f172a', textColor: '#ffffff' },
+  { id: 'seg_1', amount: 50, amountLabel: '50 MB', subLabel: 'Data', isSmallest: true, giftType: 'data', unit: 'MB', color: '#0f172a', textColor: '#ffffff' },
   { id: 'seg_2', amount: 100, amountLabel: '100 MB', subLabel: 'Data', giftType: 'data', unit: 'MB', color: '#0066ff', textColor: '#ffffff' },
   { id: 'seg_3', amount: 250, amountLabel: '250 MB', subLabel: 'Data', giftType: 'data', unit: 'MB', color: '#ffffff', textColor: '#0a0a0f' },
   { id: 'seg_4', amount: 500, amountLabel: '500 MB', subLabel: 'Data', giftType: 'data', unit: 'MB', color: '#0f172a', textColor: '#ffffff' },

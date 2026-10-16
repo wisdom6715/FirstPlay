@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
  * Default fallback 6-segment zero outcomes per PRD Section 3
  */
 const DEFAULT_SIX_SEGMENTS = [
-  { id: 'seg_1', amount: 50, amountLabel: '50 MB', subLabel: 'Try Again', isSmallest: true, color: '#0f172a', textColor: '#ffffff' },
+  { id: 'seg_1', amount: 50, amountLabel: '50 MB', subLabel: 'Data', isSmallest: true, color: '#0f172a', textColor: '#ffffff' },
   { id: 'seg_2', amount: 100, amountLabel: '100 MB', subLabel: 'Data', color: '#0066ff', textColor: '#ffffff' },
   { id: 'seg_3', amount: 250, amountLabel: '250 MB', subLabel: 'Data', color: '#ffffff', textColor: '#0a0a0f' },
   { id: 'seg_4', amount: 500, amountLabel: '500 MB', subLabel: 'Data', color: '#0f172a', textColor: '#ffffff' },
