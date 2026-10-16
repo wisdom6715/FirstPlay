@@ -23,7 +23,9 @@ import {
   DollarSign,
   Gift,
   ShieldCheck,
-  Layers
+  Layers,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { tournamentService } from '../services/tournamentService';
 import { uploadPromotionAsset } from '../services/firebaseConfig';
@@ -271,6 +273,38 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
     }
   };
 
+  // Toggle Hide / Visibility
+  const handleToggleHide = async (tournament) => {
+    setActionInProgressId(tournament.id);
+    try {
+      const res = await tournamentService.toggleTournamentHidden(tournament.id, Boolean(tournament.is_hidden));
+      onShowToast?.(
+        res.is_hidden
+          ? `Tournament "${tournament.tournament_name}" is now hidden from public view.`
+          : `Tournament "${tournament.tournament_name}" is now visible.`,
+        'info'
+      );
+      setTournaments(prev =>
+        prev.map(t => {
+          if (t.id !== tournament.id) return t;
+          const newHidden = res.is_hidden;
+          return {
+            ...t,
+            is_hidden: newHidden,
+            computedStatus: newHidden 
+              ? 'hidden' 
+              : (t.status === 'completed' ? 'completed' : (new Date() >= (t.endsAtDate || new Date()) ? 'completed' : 'ongoing'))
+          };
+        })
+      );
+    } catch (err) {
+      console.error('[AdminTournamentManager] Toggle hide error:', err);
+      onShowToast?.('Failed to update tournament visibility', 'error');
+    } finally {
+      setActionInProgressId(null);
+    }
+  };
+
   // View Leaderboard Modal
   const handleOpenLeaderboard = async (tournament) => {
     setSelectedTournamentForLeaderboard(tournament);
@@ -302,7 +336,8 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
       all: tournaments.length,
       ongoing: tournaments.filter(t => t.computedStatus === 'ongoing').length,
       upcoming: tournaments.filter(t => t.computedStatus === 'upcoming').length,
-      completed: tournaments.filter(t => t.computedStatus === 'completed').length
+      completed: tournaments.filter(t => t.computedStatus === 'completed').length,
+      hidden: tournaments.filter(t => t.computedStatus === 'hidden').length
     };
   }, [tournaments]);
 
@@ -341,9 +376,10 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
       <div className="flex items-center gap-2 border-b border-zinc-200 pb-2 overflow-x-auto">
         {[
           { key: 'all', label: 'All Tournaments', count: counts.all },
-          { key: 'ongoing', label: 'Ongoing', count: counts.ongoing, badgeBg: 'bg-emerald-100 text-emerald-800' },
+          { key: 'ongoing', label: 'Active', count: counts.ongoing, badgeBg: 'bg-emerald-100 text-emerald-800' },
           { key: 'upcoming', label: 'Upcoming', count: counts.upcoming, badgeBg: 'bg-amber-100 text-amber-800' },
-          { key: 'completed', label: 'Completed (Visible)', count: counts.completed, badgeBg: 'bg-zinc-100 text-zinc-800' }
+          { key: 'completed', label: 'Completed', count: counts.completed, badgeBg: 'bg-zinc-100 text-zinc-800' },
+          { key: 'hidden', label: 'Hidden', count: counts.hidden, badgeBg: 'bg-zinc-200 text-zinc-700' }
         ].map(tab => (
           <button
             key={tab.key}
@@ -414,7 +450,8 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
           {filteredTournaments.map((tourney) => {
             const isOngoing = tourney.computedStatus === 'ongoing';
             const isUpcoming = tourney.computedStatus === 'upcoming';
-            const isCompleted = tourney.computedStatus === 'completed';
+            const isCompleted = tourney.computedStatus === 'completed' || tourney.status === 'completed';
+            const isHidden = tourney.computedStatus === 'hidden' || Boolean(tourney.is_hidden);
 
             return (
               <div
@@ -435,21 +472,28 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
 
                   {/* Status Badge */}
                   <div className="absolute top-3 right-3 flex items-center gap-2">
-                    {isOngoing && (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-md flex items-center gap-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                        <span>Ongoing</span>
+                    {isHidden && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-zinc-700/90 backdrop-blur-md text-white shadow-md flex items-center gap-1">
+                        <EyeOff size={11} />
+                        <span>Hidden</span>
                       </span>
                     )}
-                    {isUpcoming && (
+                    {isCompleted && !isHidden && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-zinc-900 text-zinc-100 shadow-md flex items-center gap-1.5 border border-zinc-700">
+                        <CheckCircle2 size={12} className="text-emerald-400" />
+                        <span>Completed</span>
+                      </span>
+                    )}
+                    {isOngoing && !isHidden && !isCompleted && (
+                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-white shadow-md flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                        <span>Active</span>
+                      </span>
+                    )}
+                    {isUpcoming && !isHidden && !isCompleted && (
                       <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-md flex items-center gap-1.5">
                         <Clock size={12} />
                         <span>Upcoming</span>
-                      </span>
-                    )}
-                    {isCompleted && (
-                      <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-zinc-800 text-zinc-200 shadow-md">
-                        Completed (Past)
                       </span>
                     )}
                   </div>
@@ -549,8 +593,23 @@ export default function AdminTournamentManager({ allGames = [], onShowToast }) {
                     </button>
 
                     <div className="flex items-center gap-2">
+                      {/* Hide / Unhide Toggle */}
+                      <button
+                        type="button"
+                        disabled={actionInProgressId === tourney.id}
+                        onClick={() => handleToggleHide(tourney)}
+                        title={tourney.is_hidden ? "Make Tournament Visible" : "Hide Tournament"}
+                        className={`p-1.5 rounded-xl border transition cursor-pointer disabled:opacity-50 ${
+                          tourney.is_hidden 
+                            ? 'text-amber-600 hover:bg-amber-50 border-amber-200 bg-amber-50/50' 
+                            : 'text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 border-transparent hover:border-zinc-200'
+                        }`}
+                      >
+                        {tourney.is_hidden ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+
                       {/* Conclude Button */}
-                      {tourney.status !== 'completed' && (
+                      {tourney.status !== 'completed' && tourney.computedStatus !== 'completed' && (
                         <button
                           type="button"
                           disabled={actionInProgressId === tourney.id}

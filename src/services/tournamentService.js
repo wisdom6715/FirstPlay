@@ -47,22 +47,30 @@ export async function getTournaments() {
       const startsAtMillis = data.starts_at?.toMillis ? data.starts_at.toMillis() : (data.starts_at ? new Date(data.starts_at).getTime() : now);
       const endsAtMillis = data.ends_at?.toMillis ? data.ends_at.toMillis() : (startsAtMillis + 24 * 60 * 60 * 1000);
 
-      let computedStatus = data.status || 'upcoming';
-      if (computedStatus !== 'cancelled') {
-        if (now < startsAtMillis) {
-          computedStatus = 'upcoming';
-        } else if (now >= startsAtMillis && now < endsAtMillis) {
-          computedStatus = 'ongoing';
-        } else if (now >= endsAtMillis) {
-          // 24 hours elapsed - counts as completed
-          computedStatus = 'completed';
-        }
+      const explicitStatus = (data.status || '').toLowerCase();
+      const isHidden = Boolean(data.is_hidden || data.hidden === true || explicitStatus === 'hidden');
+
+      let computedStatus;
+      if (isHidden) {
+        computedStatus = 'hidden';
+      } else if (explicitStatus === 'completed' || data.is_completed || data.concluded) {
+        computedStatus = 'completed';
+      } else if (explicitStatus === 'cancelled') {
+        computedStatus = 'cancelled';
+      } else if (now < startsAtMillis) {
+        computedStatus = 'upcoming';
+      } else if (now >= endsAtMillis) {
+        // 24 hours elapsed - counts as completed
+        computedStatus = 'completed';
+      } else {
+        computedStatus = 'ongoing';
       }
 
       return {
         id: d.id,
         tournament_id: data.tournament_id || d.id,
         ...data,
+        is_hidden: isHidden,
         computedStatus,
         startsAtDate: new Date(startsAtMillis),
         endsAtDate: new Date(endsAtMillis)
@@ -303,10 +311,28 @@ export async function updatePrizeRedemptionStatus(redemptionId, newStatus) {
   return { success: true };
 }
 
+/**
+ * Toggle tournament hidden / visibility status
+ */
+export async function toggleTournamentHidden(tournamentId, currentHiddenState) {
+  if (!isFirebaseLive || !db) throw new Error('Firebase connection not available');
+
+  const tourneyDocRef = doc(db, 'tournaments', tournamentId);
+  const newHiddenState = !currentHiddenState;
+
+  await updateDoc(tourneyDocRef, {
+    is_hidden: newHiddenState,
+    updated_at: serverTimestamp()
+  });
+
+  return { success: true, is_hidden: newHiddenState };
+}
+
 export const tournamentService = {
   getTournaments,
   createTournamentOnAdmin,
   concludeTournamentAndAwardPrizes,
+  toggleTournamentHidden,
   deleteTournament,
   getTournamentParticipants,
   getTournamentPrizeRedemptions,

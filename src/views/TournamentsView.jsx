@@ -102,21 +102,25 @@ export default function TournamentsView({
     loadTournaments();
   }, []);
 
-  // Filter tournaments
+  // Filter tournaments (hidden tournaments are excluded from public view)
+  const visibleTournaments = useMemo(() => {
+    return tournaments.filter((t) => !t.is_hidden && t.status !== 'hidden');
+  }, [tournaments]);
+
   const filteredTournaments = useMemo(() => {
-    if (activeFilter === 'all') return tournaments;
-    return tournaments.filter((t) => t.computedStatus === activeFilter);
-  }, [tournaments, activeFilter]);
+    if (activeFilter === 'all') return visibleTournaments;
+    return visibleTournaments.filter((t) => t.computedStatus === activeFilter);
+  }, [visibleTournaments, activeFilter]);
 
   // Counts for filter pills
   const counts = useMemo(() => {
     return {
-      all: tournaments.length,
-      ongoing: tournaments.filter((t) => t.computedStatus === 'ongoing').length,
-      upcoming: tournaments.filter((t) => t.computedStatus === 'upcoming').length,
-      completed: tournaments.filter((t) => t.computedStatus === 'completed').length
+      all: visibleTournaments.length,
+      ongoing: visibleTournaments.filter((t) => t.computedStatus === 'ongoing').length,
+      upcoming: visibleTournaments.filter((t) => t.computedStatus === 'upcoming').length,
+      completed: visibleTournaments.filter((t) => t.computedStatus === 'completed').length
     };
-  }, [tournaments]);
+  }, [visibleTournaments]);
 
   return (
     <div className="flex-1 overflow-y-auto px-3.5 sm:px-6 lg:px-10 py-4 sm:py-6 space-y-6 sm:space-y-8 text-left">
@@ -257,9 +261,9 @@ export default function TournamentsView({
         /* Tournament Cards Grid */
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {filteredTournaments.map((tourney) => {
-            const isOngoing = tourney.computedStatus === 'ongoing';
-            const isUpcoming = tourney.computedStatus === 'upcoming';
-            const isCompleted = tourney.computedStatus === 'completed';
+            const isCompleted = tourney.computedStatus === 'completed' || tourney.status === 'completed';
+            const isOngoing = tourney.computedStatus === 'ongoing' && !isCompleted;
+            const isUpcoming = tourney.computedStatus === 'upcoming' && !isCompleted;
 
             const banner = tourney.tournament_img || tourney.game_logo || '/icon.png';
             const gameLogo = tourney.game_logo || '/icon.png';
