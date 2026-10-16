@@ -1,12 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { WHEEL_SEGMENTS } from '../services/spinGiftService';
 
 /**
- * Authentic 8-Segment Spinning Wheel matching media_1791543505455.png
+ * Default fallback 6-segment zero outcomes per PRD Section 3
+ */
+const DEFAULT_SIX_SEGMENTS = [
+  { id: 'seg_1', amount: 50, amountLabel: '50 MB', subLabel: 'Data', isSmallest: true, color: '#0f172a', textColor: '#ffffff' },
+  { id: 'seg_2', amount: 100, amountLabel: '100 MB', subLabel: 'Data', color: '#0066ff', textColor: '#ffffff' },
+  { id: 'seg_3', amount: 250, amountLabel: '250 MB', subLabel: 'Data', color: '#ffffff', textColor: '#0a0a0f' },
+  { id: 'seg_4', amount: 500, amountLabel: '500 MB', subLabel: 'Data', color: '#0f172a', textColor: '#ffffff' },
+  { id: 'seg_5', amount: 1024, amountLabel: '1024 MB', subLabel: 'Data', color: '#0066ff', textColor: '#ffffff' },
+  { id: 'seg_6', amount: 2048, amountLabel: '2048 MB', subLabel: 'Data', color: '#ffffff', textColor: '#0a0a0f' }
+];
+
+/**
+ * Dynamic Six-Segment Spinning Wheel (60 degrees each)
+ * Consumes the active configuration from Firebase per PRD Section 3.
  */
 export default function SpinWheel({
-  isSpinning,
-  targetOutcome,
+  segments = DEFAULT_SIX_SEGMENTS,
+  isSpinning = false,
+  targetOutcome = null,
   onSpinStart,
   onSpinEnd,
   disabled = false
@@ -15,10 +28,15 @@ export default function SpinWheel({
   const [animating, setAnimating] = useState(false);
   const totalRotationsRef = useRef(0);
 
-  const numSegments = WHEEL_SEGMENTS.length; // 8
-  const segmentAngle = 360 / numSegments; // 45 deg
+  // Guarantee exactly 6 segments
+  const activeSegments = Array.isArray(segments) && segments.length === 6 
+    ? segments 
+    : DEFAULT_SIX_SEGMENTS;
 
-  // Handle spin execution when targetOutcome arrives
+  const numSegments = 6;
+  const segmentAngle = 360 / numSegments; // 60 degrees
+
+  // Handle spin execution when targetOutcome arrives from backend
   useEffect(() => {
     if (!targetOutcome || animating) return;
 
@@ -27,18 +45,17 @@ export default function SpinWheel({
 
     // Segment center angle from 12 o'clock
     const segmentCenter = segmentIndex * segmentAngle + segmentAngle / 2;
-    
-    // Natural jitter within the slice (+/- 10 deg)
-    const jitter = (Math.random() - 0.5) * 20;
+
+    // Natural jitter within the 60-degree slice (+/- 14 deg)
+    const jitter = (Math.random() - 0.5) * 28;
 
     // Additional 5 to 7 full revolutions for momentum
     const fullSpins = (5 + Math.floor(Math.random() * 2)) * 360;
 
     // Align target segment center to 12 o'clock pointer (0 deg)
-    // To rotate angle theta to 0: target rotation = (360 - theta)
     const normalizedTarget = (360 - segmentCenter + jitter + 360) % 360;
 
-    // Keep adding clockwise momentum so it never spins backwards
+    // Clockwise continuous momentum
     const currentBase = totalRotationsRef.current - (totalRotationsRef.current % 360);
     const finalRotation = currentBase + fullSpins + normalizedTarget;
 
@@ -47,7 +64,7 @@ export default function SpinWheel({
 
     const timer = setTimeout(() => {
       setAnimating(false);
-      onSpinEnd?.(targetOutcome.segment);
+      onSpinEnd?.(targetOutcome.segment || activeSegments[segmentIndex]);
     }, 4500);
 
     return () => clearTimeout(timer);
@@ -58,9 +75,9 @@ export default function SpinWheel({
     onSpinStart?.();
   };
 
-  // Helper to calculate SVG arc path
+  // Helper to calculate SVG arc path for 60-degree wedge
   const createArcPath = (index) => {
-    const startAngle = index * segmentAngle - 90; // Start from top (-90 deg in SVG)
+    const startAngle = index * segmentAngle - 90; // Start at 12 o'clock (-90 deg in SVG)
     const endAngle = startAngle + segmentAngle;
 
     const startRad = (startAngle * Math.PI) / 180;
@@ -99,7 +116,7 @@ export default function SpinWheel({
           className="w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[24px] border-t-[#0066ff] drop-shadow-[0_4px_10px_rgba(0,102,255,0.6)]"
           style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))' }}
         />
-        {/* Subtle pointer base highlight */}
+        {/* Pointer tip highlight */}
         <div className="w-2.5 h-1 bg-white/70 rounded-full -mt-5" />
       </div>
 
@@ -109,10 +126,10 @@ export default function SpinWheel({
         {/* Ambient Ring Glow */}
         <div className="absolute inset-0 rounded-full bg-blue-600/10 blur-xl pointer-events-none" />
 
-        {/* Outer Rim Ring with perimeter tick marks */}
+        {/* Outer Rim Ring with perimeter border */}
         <div className="absolute inset-[-6px] rounded-full border-[5px] border-[#0a0d14] shadow-2xl pointer-events-none z-20" />
 
-        {/* Rotating Wheel Group */}
+        {/* Rotating Wheel Group (6 segments) */}
         <svg
           viewBox="0 0 400 400"
           className="w-full h-full rounded-full shadow-2xl"
@@ -122,15 +139,20 @@ export default function SpinWheel({
             transformOrigin: 'center'
           }}
         >
-          {/* Slices */}
-          {WHEEL_SEGMENTS.map((seg, idx) => {
+          {/* 6 Slices */}
+          {activeSegments.map((seg, idx) => {
             const { x, y, rotation } = getTextCoordinates(idx);
+            const sliceColor = seg.color || (idx % 2 === 0 ? '#0f172a' : '#0066ff');
+            const textColor = seg.textColor || (sliceColor === '#ffffff' ? '#0a0a0f' : '#ffffff');
+            const displayAmount = seg.amountLabel || `${seg.amount || 0} ${seg.unit || 'MB'}`;
+            const displaySub = seg.subLabel || 'Data';
+
             return (
-              <g key={seg.id}>
-                {/* Segment Wedge */}
+              <g key={seg.id || `seg-${idx}`}>
+                {/* 60-degree Segment Wedge */}
                 <path
                   d={createArcPath(idx)}
-                  fill={seg.color}
+                  fill={sliceColor}
                   stroke="#0a0d14"
                   strokeWidth="2.5"
                 />
@@ -140,36 +162,36 @@ export default function SpinWheel({
                   <text
                     x="0"
                     y="-4"
-                    fill={seg.textColor}
-                    fontSize="17"
+                    fill={textColor}
+                    fontSize="18"
                     fontWeight="800"
                     fontFamily="system-ui, -apple-system, sans-serif"
                     textAnchor="middle"
                     dominantBaseline="middle"
                   >
-                    {seg.amountLabel}
+                    {displayAmount}
                   </text>
                   <text
                     x="0"
-                    y="13"
-                    fill={seg.textColor}
-                    fontSize="10"
+                    y="14"
+                    fill={textColor}
+                    fontSize="11"
                     fontWeight="600"
-                    opacity={seg.textColor === '#ffffff' ? 0.85 : 0.75}
+                    opacity={textColor === '#ffffff' ? 0.85 : 0.75}
                     fontFamily="system-ui, -apple-system, sans-serif"
                     textAnchor="middle"
                     dominantBaseline="middle"
                   >
-                    {seg.subLabel}
+                    {displaySub}
                   </text>
                 </g>
               </g>
             );
           })}
 
-          {/* Outer Ring Tick Dots (16 dots matching screenshot) */}
-          {Array.from({ length: 16 }).map((_, i) => {
-            const angle = (i * 360) / 16 - 90;
+          {/* Outer Ring Tick Dots (18 dots evenly spaced: 3 per segment) */}
+          {Array.from({ length: 18 }).map((_, i) => {
+            const angle = (i * 360) / 18 - 90;
             const rad = (angle * Math.PI) / 180;
             const dotX = 200 + 192 * Math.cos(rad);
             const dotY = 200 + 192 * Math.sin(rad);
@@ -191,15 +213,15 @@ export default function SpinWheel({
           <button
             type="button"
             onClick={handleHubClick}
-            disabled={disabled || animating}
+            disabled={disabled || animating || isSpinning}
             className={`w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-[#0066ff] border-4 border-white shadow-[0_8px_24px_rgba(0,102,255,0.5)] flex items-center justify-center transition-all ${
-              disabled || animating
+              disabled || animating || isSpinning
                 ? 'opacity-85 cursor-not-allowed'
                 : 'hover:scale-105 active:scale-95 hover:bg-[#0055dd] cursor-pointer'
             }`}
           >
             <span className="text-white font-extrabold text-sm tracking-wider uppercase drop-shadow-sm">
-              {animating ? '...' : 'SPIN'}
+              {animating || isSpinning ? '...' : 'SPIN'}
             </span>
           </button>
         </div>

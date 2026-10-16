@@ -8,6 +8,7 @@ import {
   doc, 
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   serverTimestamp
@@ -110,6 +111,7 @@ export function normalizeAppDoc(docId, data) {
 
   return {
     id: docId,
+    game_id: data.game_id || data.id || docId,
     name,
     full_name: data.full_name ? `${name} — ${data.full_name}` : name,
     category,
@@ -132,27 +134,130 @@ export function normalizeAppDoc(docId, data) {
   };
 }
 
-// Convert Firestore 'promotion_banner' document into standard FirstPlay banner structure
+// Convert Firestore 'promotional' document into standard FirstPlay banner structure
 export function normalizeBannerDoc(docId, data) {
+  if (!data) return null;
+
+  // Filter out inactive/disabled promotional documents
+  if (data.active === false || data.status === 'disabled') {
+    return null;
+  }
+
+  // Extract banner image URL (handles images, products, and banners)
+  const bannerUrl = (
+    data.image_url ||
+    data.imageUrl ||
+    data.banner_url ||
+    data.bannerUrl ||
+    data.banner ||
+    data.image ||
+    data.flyer ||
+    data.flyer_url ||
+    data.photo_url ||
+    data.product_image ||
+    data.productImage ||
+    (Array.isArray(data.images) && data.images[0]) ||
+    (Array.isArray(data.image_urls) && data.image_urls[0]) ||
+    data.logo ||
+    data.logo_url ||
+    ''
+  ).toString().trim();
+
+  // If there is no image at all, it cannot be rendered as a banner
+  if (!bannerUrl) {
+    return null;
+  }
+
+  // Extract logo / thumbnail image
+  const logoUrl = (
+    data.logo_url ||
+    data.logo ||
+    data.icon ||
+    data.icon_url ||
+    bannerUrl
+  ).toString().trim();
+
+  // Resolve item name / product name
+  const name = (
+    data.product_name ||
+    data.productName ||
+    data.title ||
+    data.name ||
+    data.game_name ||
+    data.app_name ||
+    'Featured Promotion'
+  ).toString().trim();
+
+  // Resolve target link / product URL
+  const targetUrl = (
+    data.product_url ||
+    data.productUrl ||
+    data.target_url ||
+    data.targetUrl ||
+    data.url ||
+    data.link ||
+    data.game_url ||
+    data.app_url ||
+    ''
+  ).toString().trim();
+
+  // Determine category (product, game, app, or promotion)
+  const isProduct = Boolean(
+    data.category === 'product' ||
+    data.type === 'product' ||
+    data.product_name ||
+    data.product_url ||
+    data.price !== undefined
+  );
+
+  const category = isProduct 
+    ? 'product' 
+    : (data.category || (data.placement === 'app' ? 'app' : data.placement === 'product' ? 'product' : 'promotional'));
+
+  const badgeText = data.badge_text || data.badgeText || data.badge || (
+    isProduct ? 'FEATURED PRODUCT' : 'SPECIAL PROMOTION'
+  );
+
+  const tagline = (
+    data.tagline ||
+    data.subtitle ||
+    data.short_description ||
+    (isProduct ? 'Featured product on FirstPlay' : 'Special promotion on FirstPlay')
+  ).toString().trim();
+
+  const description = (
+    data.description ||
+    data.subtitle ||
+    data.tagline ||
+    (isProduct ? 'Explore this highlighted product on FirstPlay.' : 'Experience this featured promotion directly on FirstPlay.')
+  ).toString().trim();
+
   return {
     id: docId,
-    name: data.title || 'Featured Promotion',
-    full_name: data.title || 'Featured Promotion',
-    category: data.placement === 'app' ? 'app' : data.placement === 'product' ? 'product' : 'game',
-    tagline: data.subtitle || 'Featured on FirstPlay',
-    description: data.subtitle || 'Experience this highlighted feature directly on FirstPlay.',
-    url: data.target_url || '',
-    logo_url: data.image_url,
-    banner_url: data.image_url,
-    creator: 'FirstPlay Spotlight',
-    origin: 'Global',
-    tags: ['Featured', 'Banner'],
-    badge_text: data.badge_text || 'FEATURED',
+    name,
+    full_name: name,
+    category,
+    tagline,
+    description,
+    url: targetUrl,
+    target_url: targetUrl,
+    product_url: targetUrl,
+    banner_url: bannerUrl,
+    image_url: bannerUrl,
+    logo_url: logoUrl,
+    price: data.price !== undefined ? data.price : null,
+    creator: data.creator || data.brand || data.merchant || data.studio || 'FirstPlay Partner',
+    origin: data.origin || 'Promotional',
+    tags: Array.isArray(data.tags) ? data.tags : ['Promotional', isProduct ? 'Product' : 'Banner'],
+    badge_text: badgeText,
     is_featured: true,
     requires_fullscreen: Boolean(data.requires_fullscreen),
+    open_in_app: data.open_in_app !== undefined ? Boolean(data.open_in_app) : (isProduct ? false : true),
     status: 'active',
-    rating: 5.0,
-    plays_count: 0
+    rating: data.rating ? Number(data.rating) : 5.0,
+    plays_count: Number(data.plays_count || data.clicks_count || 0),
+    created_at: data.created_at?.toDate ? data.created_at.toDate().toISOString() : data.created_at || null,
+    _isPromotional: true
   };
 }
 
@@ -176,6 +281,9 @@ try {
   const cachedBanners = getLocalStoredBanners();
   if (cachedBanners.some(b => b.id === 'fp-deadshot-io' || b.url?.includes('deadshot.io'))) {
     saveLocalStoredBanners(filterOutDeadshot(cachedBanners));
+  }
+  if (cachedBanners.length > 0 && cachedBanners.some(b => !b._isPromotional)) {
+    saveLocalStoredBanners(cachedBanners.filter(b => b._isPromotional));
   }
 } catch (e) {
   // Ignore in SSR/testing environments
@@ -266,7 +374,7 @@ export const catalogService = {
     return cached.length > 0 ? cached : filterOutDeadshot(INITIAL_LISTINGS);
   },
 
-  // Fetch promotional hero banners from 'promotion_banner' collection with offline cache support
+  // Fetch promotional hero banners/products strictly from 'promotional' collection with offline cache support
   async getPromotedBanners() {
     const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
     if (isOffline) {
@@ -277,14 +385,34 @@ export const catalogService = {
 
     try {
       const bannerFetch = async () => {
-        const bannerSnap = await getDocs(collection(db, 'promotion_banner'));
         const banners = [];
-        bannerSnap.forEach(d => {
-          const data = d.data();
-          if (data.active !== false) {
-            banners.push(normalizeBannerDoc(d.id, data));
+        const seenIds = new Set();
+
+        // Query candidate promotional collections in Firebase (primary: 'promotional')
+        const collectionCandidates = ['promotional', 'promotional_banners', 'promotion_banner', 'promotions'];
+
+        for (const colName of collectionCandidates) {
+          try {
+            const snap = await getDocs(collection(db, colName));
+            snap.forEach(d => {
+              if (seenIds.has(d.id)) return;
+              const data = d.data();
+              const normalized = normalizeBannerDoc(d.id, data);
+              if (normalized && (normalized.banner_url || normalized.image_url)) {
+                seenIds.add(d.id);
+                banners.push(normalized);
+              }
+            });
+
+            // If the primary 'promotional' collection returned items, prioritize it
+            if (colName === 'promotional' && banners.length > 0) {
+              break;
+            }
+          } catch (colErr) {
+            console.warn(`[FirstPlay] Could not query ${colName} collection:`, colErr.message);
           }
-        });
+        }
+
         return banners;
       };
 
@@ -298,60 +426,39 @@ export const catalogService = {
       }
       return banners.length > 0 ? banners : getLocalStoredBanners();
     } catch (err) {
-      console.warn('[FirstPlay] Error fetching promotion_banner, using cached banners:', err.message);
+      console.warn('[FirstPlay] Error fetching promotional collection, using cached banners:', err.message);
       return getLocalStoredBanners();
     }
   },
 
-  // Get active featured hero promotion (cached offline resilient)
+  // Get active featured hero promotion strictly from the promotional collection
   async getPromotedHero() {
-    // 1. Check promotion_banner collection from Firebase (or cache)
     const banners = await this.getPromotedBanners();
     if (banners.length > 0) {
       return banners[0];
     }
-
-    // 2. Fallback to catalog listings
-    const all = await this.getListings();
-    if (!all || all.length === 0) return null;
-
-    const featuredHero = all.find(item => item.is_featured);
-    return featuredHero || all[0] || null;
+    // Strictly ONLY render items from the promotional collection - never fallback to catalog listings
+    return null;
   },
 
-  // Get all rotating ad banners for 15-second auto-scrolling slideshow
+  // Get all banners strictly from the promotional collection in Firebase
   async getAllAdBanners() {
     const remoteBanners = await this.getPromotedBanners();
-    const listings = await this.getListings();
-
     const bannerList = [];
 
-    // 1. Add all active promotion_banner items from Firebase
+    // Strictly add active items from the promotional collection in Firebase
     if (Array.isArray(remoteBanners)) {
       remoteBanners.forEach(b => {
-        if (b && (b.banner_url || b.logo_url)) {
+        if (b && (b.banner_url || b.image_url || b.logo_url)) {
           bannerList.push({
             ...b,
-            badge_text: b.badge_text || 'SPONSORED SHOWCASE'
+            badge_text: b.badge_text || (b.category === 'product' ? 'FEATURED PRODUCT' : 'SPECIAL PROMOTION')
           });
         }
       });
     }
 
-    // 2. Add other featured/popular listings with high-resolution landscape banners from Firebase
-    if (Array.isArray(listings)) {
-      listings.forEach(item => {
-        if (!item) return;
-        const alreadyIn = bannerList.some(b => b.id === item.id || (b.url && b.url === item.url));
-        if (!alreadyIn && (item.is_featured || item.banner_url || item.logo_url)) {
-          bannerList.push({
-            ...item,
-            badge_text: item.badge_text || (item.category === 'game' ? 'TOP GAME' : 'FEATURED')
-          });
-        }
-      });
-    }
-
+    // Do NOT include items from catalog listings — banners strictly only render items from the promotional collection
     return bannerList;
   },
 
@@ -492,6 +599,7 @@ export const catalogService = {
         const data = d.data();
         items.push({
           id: d.id,
+          game_id: data.game_id || data.id || d.id,
           name: data.name || data.game_name || data.title || 'Untitled Submission',
           title: data.title || data.name || data.game_name || 'Untitled Submission',
           category: data.category || 'game',
@@ -601,14 +709,21 @@ export const catalogService = {
     return fieldsToUpdate;
   },
 
-  // Approve a submission from 'under_review' -> write to 'apps' and delete from 'under_review'
+  // Approve a submission from 'under_review' -> write to 'apps' preserving the pre-generated game_id and delete from 'under_review'
   async approveUnderReviewGame(submission) {
     if (!isFirebaseLive || !db) throw new Error('Firebase is not connected');
     const category = submission.category || 'game';
     const name = submission.name || submission.title;
 
-    // 1. Write approved record to 'apps' collection
-    const newDoc = await addDoc(collection(db, 'apps'), {
+    // Use the existing game_id generated during game submission
+    const gameId = submission.game_id || submission.id;
+    const appDocRef = gameId ? doc(db, 'apps', gameId) : doc(collection(db, 'apps'));
+    const resolvedGameId = appDocRef.id;
+
+    // 1. Write approved record to 'apps' collection with the exact pre-assigned game_id
+    await setDoc(appDocRef, {
+      game_id: resolvedGameId,
+      id: resolvedGameId,
       category,
       name,
       game_name: category === 'game' ? name : null,
@@ -635,22 +750,28 @@ export const catalogService = {
       created_at: serverTimestamp()
     });
 
-    // 2. If it has a banner, also create a promotion_banner
+    // 2. If it has a banner, also create a promotional document linking to the game_id
     if (submission.banner_url) {
       try {
-        await addDoc(collection(db, 'promotion_banner'), {
+        await addDoc(collection(db, 'promotional'), {
           title: name,
-          subtitle: submission.tagline || submission.description.slice(0, 80),
+          name: name,
+          subtitle: submission.tagline || (submission.description || '').slice(0, 80),
+          description: submission.description || '',
           badge_text: 'GAME SHOWCASE',
           image_url: submission.banner_url,
+          banner_url: submission.banner_url,
           target_url: submission.url,
+          url: submission.url,
+          game_id: resolvedGameId,
+          category: category,
           placement: 'all',
           active: true,
           open_in_app: Boolean(submission.open_in_app),
           created_at: serverTimestamp()
         });
       } catch (e) {
-        console.warn('[Admin] Could not add promotion banner on approval:', e);
+        console.warn('[Admin] Could not add promotional item on approval:', e);
       }
     }
 
@@ -663,7 +784,7 @@ export const catalogService = {
     localStorage.removeItem(STORAGE_KEY_LISTINGS);
     localStorage.removeItem(STORAGE_KEY_BANNERS);
 
-    return newDoc.id;
+    return resolvedGameId;
   },
 
   // Reject and delete from 'under_review'

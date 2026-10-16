@@ -11,6 +11,9 @@ import FavouritesView from './views/FavouritesView';
 import LibraryView from './views/LibraryView';
 import SettingsView from './views/SettingsView';
 import PromoteView from './views/PromoteView';
+import GiftsView from './views/GiftsView';
+import TournamentsView from './views/TournamentsView';
+import RedeemView from './views/RedeemView';
 import AdminAuthView from './views/AdminAuthView';
 import AdminDashboardView from './views/AdminDashboardView';
 import { catalogService } from './services/catalogService';
@@ -18,7 +21,8 @@ import { preloadService, PreloadState } from './services/preloadService';
 import { isLagosLife, openGameInNewTab } from './utils/gameUtils';
 import { triggerPwaInstall, detectUserOS } from './utils/pwaUtils';
 import PwaDownloadNotification from './components/PwaDownloadNotification';
-import LegalModal from './components/LegalModal';
+import PrivacyView from './views/PrivacyView';
+import TermsView from './views/TermsView';
 import { Minimize2, X, Check, Download, Info, ExternalLink } from 'lucide-react';
 import { setTabSEO, setGameSEO, updateCatalogItemListSEO } from './services/seoService';
 import { slugify } from './sitemap';
@@ -34,6 +38,11 @@ function getTabFromPath(pathname) {
   if (clean === 'search') return 'search';
   if (clean === 'category' || clean === 'categories') return 'category';
   if (clean === 'favourite' || clean === 'favourites' || clean === 'favorites') return 'favourite';
+  if (clean === 'tournaments' || clean === 'tournament') return 'tournaments';
+  if (clean === 'gifts' || clean === 'gift' || clean === 'rewards' || clean === 'spin') return 'gifts';
+  if (clean === 'redeem') return 'redeem';
+  if (clean === 'privacy' || clean === 'privacy-policy') return 'privacy';
+  if (clean === 'terms-of-service' || clean === 'terms' || clean === 'termsofservice') return 'terms';
   return 'discover';
 }
 
@@ -41,6 +50,8 @@ function getPathFromTab(tab) {
   if (tab === 'discover') return '/';
   if (tab === 'admin-auth') return '/admin/auth';
   if (tab === 'admin-dashboard') return '/admin/dashboard';
+  if (tab === 'privacy') return '/privacy';
+  if (tab === 'terms') return '/terms-of-service';
   return `/${tab}`;
 }
 
@@ -70,8 +81,6 @@ export default function App() {
     return true;
   });
   const [installToast, setInstallToast] = useState(null);
-  const [isLegalModalOpen, setIsLegalModalOpen] = useState(false);
-  const [legalDocType, setLegalDocType] = useState('privacy');
   const [theme, setTheme] = useState(() => {
     const version = typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme_ver') : null;
     if (version !== 'v2_light') {
@@ -84,10 +93,24 @@ export default function App() {
     return (typeof window !== 'undefined' ? localStorage.getItem('firstplay_theme') : null) || 'light';
   });
 
-  const navigateToTab = (tab, push = true) => {
+  const [redeemInitialCode, setRedeemInitialCode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      return searchParams.get('code') || '';
+    }
+    return '';
+  });
+
+  const navigateToTab = (tab, push = true, extraParams = null) => {
+    if (extraParams?.code) {
+      setRedeemInitialCode(extraParams.code);
+    }
     setCurrentTab(tab);
     if (typeof window !== 'undefined') {
-      const targetPath = getPathFromTab(tab);
+      let targetPath = getPathFromTab(tab);
+      if (tab === 'redeem' && extraParams?.code) {
+        targetPath += `?code=${encodeURIComponent(extraParams.code)}`;
+      }
       if (window.location.pathname !== targetPath) {
         if (push) {
           window.history.pushState({ tab }, '', targetPath);
@@ -255,8 +278,8 @@ export default function App() {
       }
     }
 
-    // If Lagos Life OR configured with open_in_app: false, redirect / open in new tab
-    if (isLagosLife(item) || item?.open_in_app === false) {
+    // If Lagos Life, promotional product, or configured with open_in_app: false, redirect / open in new tab
+    if (isLagosLife(item) || item?.open_in_app === false || item?.category === 'product' || item?.category === 'promotional') {
       openGameInNewTab(item);
       return;
     }
@@ -405,13 +428,11 @@ export default function App() {
   };
 
   const handleOpenPrivacyPolicy = () => {
-    setLegalDocType('privacy');
-    setIsLegalModalOpen(true);
+    navigateToTab('privacy');
   };
 
   const handleOpenTerms = () => {
-    setLegalDocType('terms');
-    setIsLegalModalOpen(true);
+    navigateToTab('terms');
   };
 
   // Dedicated Firebase Admin Authentication View (site/admin/auth)
@@ -586,6 +607,33 @@ export default function App() {
                   />
                 )}
 
+                {currentTab === 'tournaments' && (
+                  <TournamentsView
+                    onNavigateDiscover={() => navigateToTab('discover')}
+                    onNavigateCategory={handleNavigateCategory}
+                    onNavigateSection={handleNavigateSection}
+                    onNavigateTab={navigateToTab}
+                    onOpenInstall={handleInstallClick}
+                    onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
+                    onOpenTerms={handleOpenTerms}
+                  />
+                )}
+
+                {currentTab === 'gifts' && (
+                  <GiftsView
+                    onNavigateTab={(tab, push, params) => navigateToTab(tab, push, params)}
+                    onNavigateGames={() => navigateToTab('discover')}
+                  />
+                )}
+
+                {currentTab === 'redeem' && (
+                  <RedeemView
+                    initialCode={redeemInitialCode}
+                    onNavigateHome={() => navigateToTab('discover')}
+                    onNavigateWheel={() => navigateToTab('gifts')}
+                  />
+                )}
+
                 {currentTab === 'promote' && (
                   <PromoteView
                     currentTheme={theme}
@@ -593,6 +641,22 @@ export default function App() {
                     onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
                     onOpenTerms={handleOpenTerms}
                     onNavigateTab={navigateToTab}
+                  />
+                )}
+
+                {currentTab === 'privacy' && (
+                  <PrivacyView
+                    onNavigateTab={navigateToTab}
+                    onNavigateCategory={handleNavigateCategory}
+                    onNavigateSection={handleNavigateSection}
+                  />
+                )}
+
+                {currentTab === 'terms' && (
+                  <TermsView
+                    onNavigateTab={navigateToTab}
+                    onNavigateCategory={handleNavigateCategory}
+                    onNavigateSection={handleNavigateSection}
                   />
                 )}
               </>
@@ -721,14 +785,6 @@ export default function App() {
           </div>
         </div>
       )}
-
-      {/* Legal Privacy Policy & Terms of Service Modal */}
-      <LegalModal
-        isOpen={isLegalModalOpen}
-        currentTheme={theme}
-        initialDoc={legalDocType}
-        onClose={() => setIsLegalModalOpen(false)}
-      />
     </div>
   );
 }

@@ -126,6 +126,19 @@ export default function Footer({
                 <button
                   type="button"
                   onClick={() => {
+                    onNavigateTab?.('tournaments');
+                    const container = document.querySelector('.overflow-y-auto');
+                    container?.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="hover:text-white transition-colors cursor-pointer text-left"
+                >
+                  Tournaments
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
                     onNavigateTab?.('promote');
                     const container = document.querySelector('.overflow-y-auto');
                     container?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -171,20 +184,30 @@ export default function Footer({
           </p>
 
           <div className="flex items-center gap-6 order-1 sm:order-2">
-            <button
-              type="button"
-              onClick={onOpenPrivacyPolicy}
+            <a
+              href="/privacy"
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  onOpenPrivacyPolicy?.();
+                }
+              }}
               className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
             >
               Privacy Policy
-            </button>
-            <button
-              type="button"
-              onClick={onOpenTerms}
+            </a>
+            <a
+              href="/terms-of-service"
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  onOpenTerms?.();
+                }
+              }}
               className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
             >
               Terms of Service
-            </button>
+            </a>
             <button
               type="button"
               onClick={() => onNavigateTab?.('admin-dashboard')}

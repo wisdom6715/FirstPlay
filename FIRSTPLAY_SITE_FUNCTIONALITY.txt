@@ -1,0 +1,309 @@
+================================================================================
+                       FIRSTPLAY WEB PLATFORM
+                 SYSTEM FUNCTIONALITY & ARCHITECTURE
+================================================================================
+Document Version  : 1.0.0
+Last Updated      : October 2026
+Platform Name     : FirstPlay (firstplay.app / firstplay.fun)
+Technology Stack  : Next.js 16 (App Router & Turbopack), React, Tailwind CSS,
+                    Firebase (Auth, Firestore, Cloud Storage), Flutterwave API,
+                    Resend Email API
+Target Market     : African Web Gaming, Mobile Gamers, Indie Game Studios
+================================================================================
+
+
+1. EXECUTIVE SUMMARY & PLATFORM MISSION
+--------------------------------------------------------------------------------
+FirstPlay is a high-performance, web-based digital gaming and interactive 
+experiences platform built specifically for mobile and desktop web users across 
+Nigeria and the broader African continent. 
+
+The core mission of the platform is to eliminate installation friction: players 
+can discover, launch, and play high-quality HTML5 and WebGL games instantly 
+directly inside their web browser with zero app store downloads.
+
+Simultaneously, FirstPlay serves as an ecosystem bridging players, game 
+publishers, and real-world value by integrating:
+  1. An instant web-first game player and catalog.
+  2. A developer submission hub for indie game studios.
+  3. A gamified spin-and-win rewards system powered by real-time gameplay.
+  4. An automated reward fulfillment engine dispensing airtime, mobile data, 
+     gift cards, and cash tournament payouts via Flutterwave.
+  5. A secure, MFA-protected administrator command center with live content 
+     governance, dynamic gift configuration, and email notification pipelines.
+
+
+================================================================================
+2. PLAYER EXPERIENCE & FRONTEND CAPABILITIES
+================================================================================
+
+2.1 Home & Discovery Engine (DiscoverView)
+  - Hero Showcase Carousel: Features high-impact landscape game banners with 
+    curated calls-to-action for headline titles.
+  - Trending & New Releases: Dynamically queries the Firestore catalog to present 
+    the most played and recently approved games.
+  - Quick Category Carousels: Horizontal touch-scrolling carousels grouped by 
+    popular genres (Action, Arcade, Puzzle, Sports, Strategy, etc.).
+  - Responsive Grid Layout: Follows an 8-point rhythmic design system ensuring 
+    crisp legibility across all screen sizes (mobile phones, tablets, desktops).
+
+2.2 Genre Navigation & Filtering (CategoriesView)
+  - Dedicated category directory listing games filtered by category tags.
+  - Interactive chip filters allowing users to switch genres seamlessly.
+  - Live count indicators reflecting total games available per category.
+
+2.3 Real-Time Search (SearchView)
+  - Instant client-side and catalog search indexing game titles, creator names, 
+    tags, and descriptive keywords.
+  - Live search results display with zero full-page reload lag.
+
+2.4 User Library & Bookmarks (LibraryView & FavouritesView)
+  - "Recently Played" local history tracking games launched by the user.
+  - One-tap "Favourite" bookmarking allowing users to curate their personal 
+    game collection.
+  - Client-side storage persistence retaining user preferences without requiring 
+    mandatory initial sign-in.
+
+2.5 Sandboxed Game Player (PlayerView)
+  - Sandboxed Iframe Architecture: Runs web games inside a secured, sandboxed 
+    iframe environment preventing malicious scripts from accessing parent state.
+  - Mobile Viewport Optimization: Enforces responsive scaling, touch controls, 
+    and orientation adjustment (portrait or landscape).
+  - Fullscreen Play Mode: Native browser fullscreen toggle allowing distraction-free 
+    arcade play.
+  - Gameplay Session Tracking: Measures active gameplay duration to calculate 
+    rewards eligibility.
+
+2.6 Progressive Web App (PWA) Capabilities
+  - Web App Manifest and Service Worker support.
+  - Install Prompts: Non-intrusive prompt allowing users to add FirstPlay to their 
+    mobile home screen like a native app.
+  - Offline handling and cached asset shells for instant subsequent loads.
+
+
+================================================================================
+3. REWARDS & GAMIFICATION SYSTEM (SPIN & WIN)
+================================================================================
+
+3.1 Eligibility & Session Requirements (GiftsView)
+  - 2-Hour Gameplay Rule: Players qualify to spin the FirstPlay Reward Wheel only 
+    after actively engaging with games on the platform for a cumulative minimum 
+    of 2 hours.
+  - Session Protection: Prevents automated script spinning by requiring server-side 
+    verification of gameplay session tokens.
+
+3.2 6-Segment Spin Wheel (SpinWheel Component)
+  - Interactive 6-segment spinning canvas with smooth deceleration physics.
+  - Server-Authoritative Resolution: The winning outcome is never determined on 
+    the client. When the user taps "Spin", the client calls `/api/rewards/spin`, 
+    which selects the segment securely based on active Firebase configuration.
+  - Permanent "Zero Outcome" Safety: Segment 1 is permanently locked to 0 reward 
+    units ("Try Again / Better Luck Next Time"), preventing infinite payout loops. 
+    Segments 2 through 6 reflect administrator-configured reward quantities.
+
+3.3 Dynamic Reward Categories
+  - Mobile Data (e.g., 100 MB, 250 MB, 500 MB, 1 GB, 2 GB).
+  - Airtime (e.g., N100, N200, N500, N1,000).
+  - Gift Cards & Subscriptions (e.g., Netflix, gaming vouchers).
+  - Tournament Cash Prizes (bank payouts from competitive tournaments).
+
+3.4 Cryptographic Redemption Codes & Security
+  - Unique Code Generation: Winning spins generate a cryptographically random, 
+    unique uppercase alphanumeric redemption code.
+  - 24-Hour Expiration: Every redemption code document stores an exact expiration 
+    timestamp set to 24 hours from creation (`expires_at`).
+  - Single-Use Enforcement: Once redeemed, the record is flagged as `status: "redeemed"` 
+    with a redemption timestamp, permanently preventing replay attacks.
+  - Category Immutability: The redemption category ("gift" vs. "tournament") is 
+    stored directly in Firestore and cannot be overridden by client input.
+
+
+================================================================================
+4. REWARD REDEMPTION & FULFILLMENT PORTAL (RedeemView)
+================================================================================
+
+4.1 Code Validation Pipeline (/api/rewards/validate)
+  - The user inputs their redemption code into the portal.
+  - The server verifies:
+    1. Code existence in the `redemptions` collection.
+    2. Expiration status (rejects if `now > expires_at`).
+    3. Utilization status (rejects if `status === "redeemed"`).
+  - Returns the reward payload (type, quantity, unit) without exposing private backend logic.
+
+4.2 Automated Gift Fulfillment (/api/rewards/fulfill)
+  - Telecommunication VTU Integration:
+    - User selects their Nigerian mobile network (MTN, Airtel, Glo, 9mobile).
+    - User inputs their destination phone number and optional WhatsApp number.
+    - System dispatches automated VTU API calls to Flutterwave to credit the 
+      recipient's phone with mobile airtime or data immediately.
+  - Recipient Phone & WhatsApp Logging:
+    - Phone number and WhatsApp contact are stored alongside the transaction record 
+      in Firestore for fulfillment auditing and customer support.
+
+4.3 Tournament Cash Redemption & Bank Payouts
+  - Bank Account Verification:
+    - Real-time bank list query via `/api/rewards/banks` (fetching commercial banks, 
+      fintechs, and microfinance institutions across Nigeria).
+    - Account number verification ensuring bank name matches recipient before transfer.
+  - Instant Bank Transfers:
+    - Automated Flutterwave Transfer API execution crediting the user's Nigerian bank 
+      account instantly.
+
+
+================================================================================
+5. DEVELOPER & PUBLISHER HUB (PromoteView)
+================================================================================
+
+5.1 Self-Service Game Submission Form
+  - Metadata Input:
+    - Game Title & Catchy Tagline.
+    - Studio / Developer Name.
+    - Contact Email Address (for automated review status notifications).
+    - Launch URL (HTTPS web game destination).
+    - Genre / Category Selection (Action, Arcade, Puzzle, Sports, etc.).
+    - Tags / Keywords (comma-separated).
+    - Detailed Gameplay Description.
+    - Player Orientation (Landscape or Portrait).
+    - Control Scheme (Touch, Mouse, Keyboard, Gamepad).
+  - Media Asset Uploads:
+    - Square Game Logo / Icon (512x512).
+    - Landscape Hero Banner / Flyer (16:9).
+    - Assets uploaded securely to Firebase Cloud Storage with download URLs stored.
+
+5.2 Moderation Queue (Firestore `under_review` Collection)
+  - Isolation Guarantee: Submissions are written to an isolated `under_review` 
+    collection. They DO NOT appear on the public FirstPlay site or API feeds 
+    until an authorized administrator formally approves them.
+  - Immediate Developer Notice: Upon form submission, the system triggers 
+    `sendUnderReviewEmail` via Resend, confirming receipt of the game into the review queue.
+
+
+================================================================================
+6. ADMINISTRATOR COMMAND CENTER (AdminDashboardView)
+================================================================================
+
+6.1 Multi-Factor Authentication & Access Control (AdminAuthView)
+  - Firebase Authentication: Admin accounts sign in via secure email & password.
+  - Role Verification: The server validates that the authenticated UID exists in 
+    the privileged Firestore `admins` collection.
+  - Mandatory TOTP Multi-Factor Authentication (MFA):
+    - Admins must enter a 6-digit Time-based One-Time Password generated by Google 
+      Authenticator or compatible apps.
+    - Validated through `totpService.js` with replay-prevention window checks.
+    - Unauthorized users or expired sessions are instantly logged out.
+
+6.2 Navigation & Operational Structure
+  - Left Sidebar Navigation:
+    - Game Approval Catalogue (badge with live count of pending submissions).
+    - Gift Redemption Dropdown:
+      * Segment Wheel Configuration
+      * Gift Categories Catalogue
+      * Redemption Logs Table
+
+6.3 Interactive Catalog Metric Cards (Filter System)
+  - 4 Dynamic Top Summary Cards acting as 1-click interactive filters:
+    1. "Under Review Submissions" (Amber): Shows only games pending moderator review.
+    2. "Live on Site" (Emerald): Shows only approved games currently active in the app.
+    3. "Hidden / Disabled" (Slate): Shows games toggled OFF by administrators.
+    4. "Total Games" (Blue): Shows complete database catalog.
+  - Clicking any card filters the view immediately; clicking again clears the filter.
+
+6.4 Game Approval Workflow & Rejection Reason System
+  - Approval Action:
+    - Admin reviews game link and metadata in sandbox preview.
+    - Clicking "Approve & Publish" atomically migrates the game into the public `apps` 
+      collection, marks it live, and sends an automated `sendApprovedEmail` notice 
+      with direct play links to the developer.
+  - Rejection & Feedback Modal:
+    - Clicking "Reject & Delete" opens a dedicated rejection modal with:
+      * Game snapshot (icon, title, creator, developer email).
+      * Quick Preset Reason Chips (broken URL, poor mobile touch controls, game crashes, 
+        copyright concerns, inappropriate content, forced paywalls).
+      * Custom Rejection Feedback Textarea for typing specific reviewer comments.
+    - Confirmation deletes the submission from `under_review` and sends a transactional 
+      rejection email displaying the exact feedback in a styled callout box, helping 
+      developers fix issues and resubmit.
+
+6.5 Catalog Management & Live Editing
+  - In-Place Details Editor: Admins can update titles, URLs, tags, descriptions, 
+    icons, and landscape banners with instant live synchronization.
+  - Live Toggle Switch: One-click switch toggling games between Active (`active: true`) 
+    and Hidden (`active: false`) without deleting database records.
+  - Permanent Soft/Hard Deletion: Safeguarded deletion tools with confirmation prompts.
+
+6.6 Dynamic Gift Categories Management (AdminGiftManager)
+  - Dedicated CRUD interface managing the `gift_categories` collection.
+  - Administrators can create categories (Mobile Data, Airtime, Gift Cards, Subscriptions).
+  - Edit category names, units, and active statuses dynamically.
+
+6.7 Spinner Wheel Gift Configuration
+  - Single Active Wheel Gift Model: Administrators configure one active reward 
+    document at a time.
+  - 6-Segment Outcome Array:
+    * Segment 1 is permanently locked to 0 (Try Again / Win Nothing).
+    * Segments 2 through 6 accept custom reward values configured by the admin 
+      (e.g., 100 MB, 250 MB, 500 MB, 1 GB, 2 GB).
+  - Changes instantly update the mobile/web spinner wheel without requiring app re-releases.
+
+6.8 Redemption Audit Logs & WhatsApp Support Link
+  - Live table auditing every generated redemption code:
+    * Redemption Code & Date Generated.
+    * Gift / Prize Name, Value, and Category.
+    * Status Badge (Redeemed vs. Pending/Unused).
+    * Recipient Phone Number.
+    * One-Click WhatsApp Chat Link (`https://wa.me/...`) allowing admins to open a direct 
+      chat with the winner on WhatsApp for custom fulfillment or support.
+
+6.9 24-Hour Competitive Tournaments (AdminTournamentManager)
+  - Third navigation button in the admin sidebar.
+  - One Big Add Card creation flow following the gift wheel pattern.
+  - Creation modal:
+    * Select approved game from catalog (auto-populates game ID, title, and logos).
+    * Configure custom tournament title, description, and rules.
+    * Upload high-resolution cover banner (`tournament_img` with fallback to `game_logo`).
+    * Strict 24-Hour Duration: `ends_at` is automatically computed as `starts_at + 24 hours`.
+    * Prize Pool Input & Live Top 5 Distribution Calculation:
+      - 1st Place (40%)
+      - 2nd Place (25%)
+      - 3rd Place (15%)
+      - 4th Place (10%)
+      - 5th Place (10%)
+  - Conclude & Award: One-click action querying `tournament_participants` for the top 5 
+    highest scorers and issuing secure claims into `prize_redemptions/{tournamentId}_{userId}`.
+  - Retention & Visibility: Expired tournaments remain visible under "Completed (Past)" 
+    so players and admins can review past leaderboards; only deleted when explicitly 
+    removed by an admin.
+
+
+================================================================================
+7. LEGAL, PRIVACY & COMPLIANCE PAGES
+================================================================================
+
+7.1 Standalone Legal Web Pages
+  - FirstPlay uses dedicated, accessible standalone web routes rather than popups:
+    * Privacy Policy: `/privacy` (hosted at https://firstplay.fun/privacy)
+    * Terms of Service: `/terms-of-service` (hosted at https://firstplay.fun/terms-of-service)
+  - Formatted with structured legal sections, clear typography, data privacy disclosures, 
+    and contact channels for legal and developer compliance.
+
+
+================================================================================
+8. ARCHITECTURE & TECHNICAL INTEGRATION SUMMARY
+================================================================================
+
+Layer                 Technology / Provider            Purpose
+--------------------------------------------------------------------------------
+Frontend Framework    Next.js 16.4 (Turbopack)         Server-side rendering, fast dynamic routing,
+                                                       client UI components
+Styling & Design      Tailwind CSS                     Apple-inspired, high-contrast, 8-pt spacing rhythm
+Database & Auth       Google Firebase (Firestore)      Real-time NoSQL storage for catalog, redemptions,
+                                                       categories, admins, and authentication
+Cloud Storage         Firebase Storage                 Asset hosting for game icons, screenshots, banners
+Payment & VTU         Flutterwave API                  Automated dispensing of airtime, mobile data, and
+                                                       instant bank transfers for cash tournament prizes
+Email Service         Resend API                       Transactional notifications for Under Review,
+                                                       Approved & Live, and Rejections with Feedback
+Hosting & Deployment  Vercel / Node Server             Edge network distribution and serverless API handlers
+================================================================================
+                         END OF SYSTEM DOCUMENTATION
+================================================================================

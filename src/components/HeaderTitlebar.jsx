@@ -37,6 +37,11 @@ export default function HeaderTitlebar({
     categories: 'Category',
     favourite: 'Favourite',
     search: 'Search',
+    tournaments: 'Tournaments',
+    gifts: 'Rewards Wheel',
+    redeem: 'Redeem Reward',
+    privacy: 'Privacy Policy',
+    terms: 'Terms of Service',
     settings: 'Settings',
     promote: 'Promote'
   };

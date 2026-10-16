@@ -5,7 +5,7 @@
 
 import { slugify } from '../sitemap';
 
-export const SITE_URL = 'https://firstplay.app';
+export const SITE_URL = 'https://firstplay.fun';
 export const DEFAULT_OG_IMAGE = `${SITE_URL}/firstplay_x_cover.jpg`;
 
 export const DEFAULT_SEO = {
@@ -167,6 +167,14 @@ export function setTabSEO(tab, categoryFilter = 'All') {
       });
       break;
 
+    case 'tournaments':
+      updateSEO({
+        title: 'Tournaments & Leaderboard Competitions — FirstPlay',
+        description: 'Join competitive 24-hour web game tournaments on FirstPlay. Compete with top players across Nigeria, climb the live leaderboard, and win your share of cash prize pools.',
+        canonical: `${SITE_URL}/tournaments`
+      });
+      break;
+
     case 'favourite':
       updateSEO({
         title: 'Your Favorites & Game Library — FirstPlay',
@@ -180,6 +188,22 @@ export function setTabSEO(tab, categoryFilter = 'All') {
         title: 'Settings & Appearance — FirstPlay',
         description: 'Customize theme, audio, and device settings on FirstPlay.',
         canonical: `${SITE_URL}/settings`
+      });
+      break;
+
+    case 'privacy':
+      updateSEO({
+        title: 'Privacy Policy — FirstPlay',
+        description: 'Read the official FirstPlay Privacy Policy detailing technical data handling, device local storage, and user protection standards.',
+        canonical: `${SITE_URL}/privacy`
+      });
+      break;
+
+    case 'terms':
+      updateSEO({
+        title: 'Terms of Service — FirstPlay',
+        description: 'Read the official FirstPlay Terms of Service governing access, fair gameplay, rewards redemption, and platform usage.',
+        canonical: `${SITE_URL}/terms-of-service`
       });
       break;
 

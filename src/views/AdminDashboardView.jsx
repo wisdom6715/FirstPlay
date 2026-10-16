@@ -24,21 +24,50 @@ import {
   Image as ImageIcon,
   FileText,
   Globe,
-  Mail
+  Mail,
+  Gift,
+  ChevronDown,
+  Disc,
+  Ticket,
+  Menu,
+  Tag,
+  Trophy
 } from 'lucide-react';
 import appLogo from '../assets/icon.png';
+import AdminGiftManager from '../components/AdminGiftManager';
+import AdminTournamentManager from '../components/AdminTournamentManager';
+
+const PRESET_REJECTION_REASONS = [
+  'Launch URL is broken, inaccessible, or returns an HTTP error.',
+  'Game does not scale properly or lacks responsive touch controls on mobile devices.',
+  'Game experiences severe freezing, infinite loading, or crashes during play.',
+  'Suspected copyright, trademark, or intellectual property rights issues with assets.',
+  'Inappropriate or offensive content violating FirstPlay community safety guidelines.',
+  'Forced third-party account registration or a paywall required before gameplay.'
+];
 
 export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecking, setAuthChecking] = useState(true);
 
-  // Data states
+  // Navigation State
+  const [activeNav, setActiveNav] = useState('catalog'); // 'catalog' | 'wheel' | 'gifts' | 'redemptions'
+  const [isGiftDropdownOpen, setIsGiftDropdownOpen] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [giftsCount, setGiftsCount] = useState(0);
+
   const [underReviewList, setUnderReviewList] = useState([]);
   const [allGamesList, setAllGamesList] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [catalogFilter, setCatalogFilter] = useState('all'); // 'all' | 'under_review' | 'live' | 'disabled'
   const [toastMessage, setToastMessage] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(null);
+
+  // Rejection Feedback Modal State
+  const [rejectingSubmission, setRejectingSubmission] = useState(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isSubmittingRejection, setIsSubmittingRejection] = useState(false);
 
   // Edit Modal State
   const [editingItem, setEditingItem] = useState(null);
@@ -200,37 +229,65 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     }
   };
 
-  // Reject a game under review
-  const handleReject = async (submission) => {
-    if (!window.confirm(`Reject and delete submission for "${submission.title || submission.name}"?`)) {
+  // Reject Modal Handlers
+  const handleOpenRejectModal = (submission) => {
+    setRejectingSubmission(submission);
+    setRejectionReason('');
+  };
+
+  const handleCloseRejectModal = () => {
+    if (isSubmittingRejection) return;
+    setRejectingSubmission(null);
+    setRejectionReason('');
+  };
+
+  const handleConfirmReject = async (e) => {
+    e?.preventDefault();
+    if (!rejectingSubmission) return;
+
+    const trimmedReason = rejectionReason.trim();
+    if (!trimmedReason) {
+      showToast('Please provide a reason for the rejection so the developer knows what to fix.', 'error');
       return;
     }
-    setActionInProgress(submission.id);
-    try {
-      const targetEmail = submission.email || submission.publisher_email;
-      await catalogService.rejectUnderReviewGame(submission.id);
-      showToast(`Rejected and removed "${submission.title || submission.name}".`, 'info');
 
-      // Send Rejection Notice Email to publisher
+    setIsSubmittingRejection(true);
+    setActionInProgress(rejectingSubmission.id);
+
+    try {
+      const targetEmail = rejectingSubmission.email || rejectingSubmission.publisher_email;
+      const gameTitle = rejectingSubmission.title || rejectingSubmission.name;
+      const studioName = rejectingSubmission.creator || rejectingSubmission.studioName || 'Independent Studio';
+      const gameUrl = rejectingSubmission.url;
+
+      // 1. Remove from under_review collection in Firestore
+      await catalogService.rejectUnderReviewGame(rejectingSubmission.id);
+
+      // 2. Send rejection notice with attached reason to the developer
       if (targetEmail) {
         try {
           await emailService.sendRejectedEmail({
             to: targetEmail,
-            gameTitle: submission.title || submission.name,
-            studioName: submission.creator || submission.studioName || 'Independent Studio',
-            gameUrl: submission.url
+            gameTitle,
+            studioName,
+            gameUrl,
+            reason: trimmedReason
           });
-          console.info(`[AdminDashboard] Rejection notice email sent to ${targetEmail}`);
+          console.info(`[AdminDashboard] Rejection notice with reason dispatched to ${targetEmail}`);
         } catch (mailErr) {
           console.warn('[AdminDashboard] Could not send rejection email notice:', mailErr);
         }
       }
 
+      showToast(`Rejected "${gameTitle}" and dispatched feedback to developer.`, 'info');
+      setRejectingSubmission(null);
+      setRejectionReason('');
       await loadDashboardData();
     } catch (err) {
       console.error('Error rejecting submission:', err);
       showToast('Failed to reject submission.', 'error');
     } finally {
+      setIsSubmittingRejection(false);
       setActionInProgress(null);
     }
   };
@@ -406,20 +463,46 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     );
   }
 
-  const filteredGames = allGamesList.filter((g) =>
-    (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (g.creator || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (g.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+  const handleFilterCardClick = (type) => {
+    setCatalogFilter((prev) => (prev === type ? 'all' : type));
+  };
+
+  const filteredUnderReview = underReviewList.filter((item) =>
+    (item.title || item.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.creator || item.studioName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.category || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const filteredGames = allGamesList
+    .filter((g) => {
+      if (catalogFilter === 'live') return Boolean(g.active);
+      if (catalogFilter === 'disabled') return !g.active;
+      return true;
+    })
+    .filter((g) =>
+      (g.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (g.creator || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (g.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
   const activeCount = allGamesList.filter((g) => g.active).length;
   const disabledCount = allGamesList.length - activeCount;
 
   return (
-    <div className="h-screen w-full bg-[#f5f5f7] text-[#1d1d1f] flex flex-col font-sans select-none overflow-y-auto overflow-x-hidden pb-20">
+    <div className="h-screen w-full bg-[#f5f5f7] text-[#1d1d1f] flex flex-col font-sans select-none overflow-hidden">
       {/* Top Admin Header Bar */}
-      <header className="h-16 w-full bg-white/95 backdrop-blur-xl border-b border-zinc-200/90 px-4 sm:px-8 flex items-center justify-between sticky top-0 z-40 shadow-xs shrink-0">
-        <div className="flex items-center gap-3">
+      <header className="h-16 w-full bg-white/95 backdrop-blur-xl border-b border-zinc-200/90 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-40 shadow-xs shrink-0">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Mobile Sidebar Hamburger Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsMobileSidebarOpen((prev) => !prev)}
+            title="Toggle Navigation Menu"
+            className="md:hidden w-9 h-9 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 flex items-center justify-center text-zinc-700 transition cursor-pointer"
+          >
+            {isMobileSidebarOpen ? <X size={16} /> : <Menu size={16} />}
+          </button>
+
           <button
             type="button"
             onClick={onNavigateHome}
@@ -485,245 +568,572 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-9 pb-24">
-        
-        {/* Metric Badges Banner */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
-            <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
-              <Clock size={14} className="text-amber-500" />
-              <span>Under Review</span>
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-amber-600">
-              {underReviewList.length}
-            </div>
-            <span className="text-[11px] text-zinc-500 block font-medium">Pending admin approval</span>
+      {/* Dashboard Body with Left Sidebar + Scrollable Main Content */}
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Mobile Backdrop */}
+        {isMobileSidebarOpen && (
+          <div 
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40 md:hidden animate-in fade-in duration-150"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          />
+        )}
+
+        {/* Sidebar Navigation Aside */}
+        <aside
+          className={`fixed md:static inset-y-0 left-0 z-50 md:z-auto w-64 sm:w-72 bg-white border-r border-zinc-200/90 flex flex-col justify-between shrink-0 transition-transform duration-200 ease-in-out md:translate-x-0 ${
+            isMobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'
+          }`}
+        >
+          {/* Mobile Header in Aside */}
+          <div className="p-4 border-b border-zinc-100 flex items-center justify-between md:hidden">
+            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Navigation Menu</span>
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="w-8 h-8 rounded-lg bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 cursor-pointer"
+            >
+              <X size={15} />
+            </button>
           </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
-            <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
-              <CheckCircle2 size={14} className="text-emerald-500" />
-              <span>Live on Site</span>
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-emerald-600">
-              {activeCount}
+          {/* Navigation Links Area */}
+          <div className="flex-1 overflow-y-auto p-3.5 space-y-1.5">
+            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+              Navigation
             </div>
-            <span className="text-[11px] text-zinc-500 block font-medium">Visible to players</span>
+
+            {/* Nav Button 1: Game Approval Catalogue */}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveNav('catalog');
+                setIsMobileSidebarOpen(false);
+              }}
+              className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between text-left cursor-pointer group ${
+                activeNav === 'catalog'
+                  ? 'bg-[#0071e3] text-white shadow-xs'
+                  : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Gamepad2 
+                  size={16} 
+                  className={activeNav === 'catalog' ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-800'} 
+                />
+                <span>Game Approval Catalogue</span>
+              </div>
+              {underReviewList.length > 0 ? (
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                  activeNav === 'catalog' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700 border border-amber-200'
+                }`}>
+                  {underReviewList.length}
+                </span>
+              ) : (
+                <span className={`text-[11px] font-medium ${activeNav === 'catalog' ? 'text-white/80' : 'text-zinc-400'}`}>
+                  {allGamesList.length}
+                </span>
+              )}
+            </button>
+
+            {/* Nav Button 2: Gift Redemption (Dropdown Accordion) */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsGiftDropdownOpen((prev) => !prev);
+                  if (activeNav === 'catalog') {
+                    setActiveNav('categories');
+                  }
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between text-left cursor-pointer group ${
+                  activeNav !== 'catalog'
+                    ? 'bg-blue-50/70 text-[#0071e3] border border-blue-100'
+                    : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Gift 
+                    size={16} 
+                    className={activeNav !== 'catalog' ? 'text-[#0071e3]' : 'text-zinc-500 group-hover:text-zinc-800'} 
+                  />
+                  <span>Gift Redemption</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <ChevronDown
+                    size={15}
+                    className={`transition-transform duration-200 ${
+                      isGiftDropdownOpen ? 'rotate-0 text-[#0071e3]' : '-rotate-90 text-zinc-400'
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Dropdown Menu */}
+              {isGiftDropdownOpen && (
+                <div className="mt-1 pl-3 space-y-1 border-l-2 border-blue-100 ml-4 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {/* Subitem 1: Gift Categories */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveNav('categories');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2.5 text-left cursor-pointer ${
+                      activeNav === 'categories'
+                        ? 'bg-[#0071e3] text-white shadow-xs font-bold'
+                        : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                    }`}
+                  >
+                    <Tag size={14} className={activeNav === 'categories' ? 'text-white' : 'text-zinc-400'} />
+                    <span>Gift Categories</span>
+                  </button>
+
+                  {/* Subitem 2: Wheel Gift */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveNav('wheel');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2.5 text-left cursor-pointer ${
+                      activeNav === 'wheel'
+                        ? 'bg-[#0071e3] text-white shadow-xs font-bold'
+                        : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                    }`}
+                  >
+                    <Disc size={14} className={activeNav === 'wheel' ? 'text-white' : 'text-zinc-400'} />
+                    <span>Wheel Gift</span>
+                  </button>
+
+                  {/* Subitem 3: Redemption Logs */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveNav('redemptions');
+                      setIsMobileSidebarOpen(false);
+                    }}
+                    className={`w-full px-3 py-2 rounded-lg text-xs font-semibold transition flex items-center gap-2.5 text-left cursor-pointer ${
+                      activeNav === 'redemptions'
+                        ? 'bg-[#0071e3] text-white shadow-xs font-bold'
+                        : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                    }`}
+                  >
+                    <Ticket size={14} className={activeNav === 'redemptions' ? 'text-white' : 'text-zinc-400'} />
+                    <span>Redemption Logs</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Nav Button 3: Tournaments */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('tournaments');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between text-left cursor-pointer group ${
+                  activeNav === 'tournaments'
+                    ? 'bg-[#0071e3] text-white shadow-xs'
+                    : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Trophy 
+                    size={16} 
+                    className={activeNav === 'tournaments' ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-800'} 
+                  />
+                  <span>Tournaments</span>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                  activeNav === 'tournaments' ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                }`}>
+                  24h
+                </span>
+              </button>
+            </div>
           </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
-            <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
-              <EyeOff size={14} className="text-zinc-400" />
-              <span>Hidden / Disabled</span>
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-zinc-800">
-              {disabledCount}
+          {/* Sidebar Footer */}
+          <div className="p-3.5 border-t border-zinc-100 bg-zinc-50/70 shrink-0 space-y-2">
+            <div className="flex items-center justify-between text-[11px] text-zinc-500 font-medium">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Firebase Live</span>
+              </span>
+              <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Console</span>
             </div>
-            <span className="text-[11px] text-zinc-500 block font-medium">Toggled OFF</span>
+            {currentUser?.email && (
+              <div className="text-[11px] text-zinc-600 truncate font-semibold" title={currentUser.email}>
+                {currentUser.email}
+              </div>
+            )}
           </div>
+        </aside>
 
-          <div className="p-4 sm:p-5 rounded-2xl bg-white border border-zinc-200/90 shadow-sm space-y-1">
-            <span className="text-xs font-bold text-zinc-600 flex items-center gap-1.5">
-              <Gamepad2 size={14} className="text-[#0071e3]" />
-              <span>Total Games</span>
-            </span>
-            <div className="text-2xl sm:text-3xl font-black text-zinc-900">
-              {allGamesList.length}
-            </div>
-            <span className="text-[11px] text-zinc-500 block font-medium">In Firebase catalog</span>
-          </div>
-        </div>
+        {/* Scrollable Main Content Area */}
+        <main className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 space-y-8 pb-24 min-w-0">
+          {activeNav === 'catalog' ? (
+            <>
+              {/* Metric Badges Banner (Interactive Filter Cards) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+                {/* Filter 1: Under Review */}
+                <button
+                  type="button"
+                  onClick={() => handleFilterCardClick('under_review')}
+                  title={catalogFilter === 'under_review' ? 'Click to show all' : 'Filter by Under Review'}
+                  className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-1 transition-all duration-150 cursor-pointer text-left select-none relative overflow-hidden group ${
+                    catalogFilter === 'under_review'
+                      ? 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-400/60 shadow-md'
+                      : 'bg-white border-zinc-200/90 hover:border-amber-300 hover:bg-amber-50/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-600 group-hover:text-amber-800 flex items-center gap-1.5 transition-colors">
+                      <Clock size={14} className="text-amber-500" />
+                      <span>Under Review</span>
+                    </span>
+                    {catalogFilter === 'under_review' && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-amber-200/80 text-amber-900 text-[10px] font-black uppercase tracking-wider">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-amber-600">
+                    {underReviewList.length}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 block font-medium">Pending admin approval</span>
+                </button>
+
+                {/* Filter 2: Live on Site */}
+                <button
+                  type="button"
+                  onClick={() => handleFilterCardClick('live')}
+                  title={catalogFilter === 'live' ? 'Click to show all' : 'Filter by Live on Site'}
+                  className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-1 transition-all duration-150 cursor-pointer text-left select-none relative overflow-hidden group ${
+                    catalogFilter === 'live'
+                      ? 'bg-emerald-50/90 border-emerald-400 ring-2 ring-emerald-400/60 shadow-md'
+                      : 'bg-white border-zinc-200/90 hover:border-emerald-300 hover:bg-emerald-50/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-600 group-hover:text-emerald-800 flex items-center gap-1.5 transition-colors">
+                      <CheckCircle2 size={14} className="text-emerald-500" />
+                      <span>Live on Site</span>
+                    </span>
+                    {catalogFilter === 'live' && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-emerald-200/80 text-emerald-900 text-[10px] font-black uppercase tracking-wider">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-emerald-600">
+                    {activeCount}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 block font-medium">Visible to players</span>
+                </button>
+
+                {/* Filter 3: Hidden / Disabled */}
+                <button
+                  type="button"
+                  onClick={() => handleFilterCardClick('disabled')}
+                  title={catalogFilter === 'disabled' ? 'Click to show all' : 'Filter by Hidden / Disabled'}
+                  className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-1 transition-all duration-150 cursor-pointer text-left select-none relative overflow-hidden group ${
+                    catalogFilter === 'disabled'
+                      ? 'bg-zinc-100 border-zinc-400 ring-2 ring-zinc-400/60 shadow-md'
+                      : 'bg-white border-zinc-200/90 hover:border-zinc-400 hover:bg-zinc-50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-600 group-hover:text-zinc-900 flex items-center gap-1.5 transition-colors">
+                      <EyeOff size={14} className="text-zinc-500" />
+                      <span>Hidden / Disabled</span>
+                    </span>
+                    {catalogFilter === 'disabled' && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-zinc-200 text-zinc-900 text-[10px] font-black uppercase tracking-wider">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-zinc-800">
+                    {disabledCount}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 block font-medium">Toggled OFF</span>
+                </button>
+
+                {/* Filter 4: Total Games (All) */}
+                <button
+                  type="button"
+                  onClick={() => handleFilterCardClick('all')}
+                  title="Show all games"
+                  className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-1 transition-all duration-150 cursor-pointer text-left select-none relative overflow-hidden group ${
+                    catalogFilter === 'all'
+                      ? 'bg-blue-50/90 border-[#0071e3] ring-2 ring-[#0071e3]/40 shadow-md'
+                      : 'bg-white border-zinc-200/90 hover:border-blue-300 hover:bg-blue-50/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-zinc-600 group-hover:text-[#0071e3] flex items-center gap-1.5 transition-colors">
+                      <Gamepad2 size={14} className="text-[#0071e3]" />
+                      <span>Total Games</span>
+                    </span>
+                    {catalogFilter === 'all' && (
+                      <span className="px-1.5 py-0.5 rounded-md bg-blue-100 text-[#0071e3] text-[10px] font-black uppercase tracking-wider">
+                        All
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black text-zinc-900">
+                    {allGamesList.length}
+                  </div>
+                  <span className="text-[11px] text-zinc-500 block font-medium">In Firebase catalog</span>
+                </button>
+              </div>
+
+              {/* Active Filter Indicator Bar */}
+              {catalogFilter !== 'all' && (
+                <div className="flex items-center justify-between p-3 px-4 rounded-2xl bg-white border border-zinc-200/90 shadow-xs flex-wrap gap-2 animate-in fade-in duration-150">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="font-bold text-zinc-500">Active Filter:</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase border ${
+                      catalogFilter === 'under_review'
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : catalogFilter === 'live'
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                        : 'bg-zinc-100 text-zinc-800 border-zinc-300'
+                    }`}>
+                      {catalogFilter === 'under_review' && `Under Review Submissions (${underReviewList.length})`}
+                      {catalogFilter === 'live' && `Live Games on Site (${activeCount})`}
+                      {catalogFilter === 'disabled' && `Hidden / Disabled Games (${disabledCount})`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCatalogFilter('all')}
+                    className="text-xs font-bold text-zinc-600 hover:text-zinc-900 flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 transition cursor-pointer"
+                  >
+                    <X size={13} />
+                    <span>Clear Filter</span>
+                  </button>
+                </div>
+              )}
 
         {/* =========================================================================
             SECTION 1: UNDER REVIEW SUBMISSIONS (table: under_review)
             ========================================================================= */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900">
-                  Under Review Submissions ({underReviewList.length})
-                </h2>
+        {(catalogFilter === 'all' || catalogFilter === 'under_review') && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
+                  <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900">
+                    Under Review Submissions ({filteredUnderReview.length})
+                  </h2>
+                </div>
+                <p className="text-xs text-zinc-600 mt-0.5 leading-relaxed">
+                  New games uploaded via the submission hub. <strong>None of these appear in the app until an admin approves them.</strong>
+                </p>
               </div>
-              <p className="text-xs text-zinc-600 mt-0.5 leading-relaxed">
-                New games uploaded via the submission hub. <strong>None of these appear in the app until an admin approves them.</strong>
-              </p>
             </div>
-          </div>
 
-          {isLoadingData ? (
-            <div className="p-10 rounded-2xl bg-white border border-zinc-200 text-center shadow-xs">
-              <div className="w-6 h-6 border-2 border-zinc-300 border-t-[#0071e3] rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-zinc-500">Loading pending submissions...</p>
-            </div>
-          ) : underReviewList.length === 0 ? (
-            <div className="p-8 rounded-2xl bg-white border border-zinc-200/90 text-center space-y-2 shadow-xs">
-              <CheckCircle2 size={32} className="mx-auto text-emerald-500" />
-              <p className="text-sm font-bold text-zinc-800">Queue is Clear</p>
-              <p className="text-xs text-zinc-500">There are currently no games waiting under review.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {underReviewList.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-sm space-y-4 relative overflow-hidden"
-                >
-                  <div className="flex items-start gap-3.5">
-                    <img
-                      src={item.logo_url || '/icon.png'}
-                      alt={item.title}
-                      className="w-14 h-14 rounded-2xl object-cover bg-zinc-100 border border-zinc-200 shrink-0 shadow-xs"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-extrabold uppercase tracking-wider">
-                          UNDER REVIEW
-                        </span>
-                        <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 text-[10px] font-semibold uppercase">
-                          {item.category || 'GAME'}
+            {isLoadingData ? (
+              <div className="p-10 rounded-2xl bg-white border border-zinc-200 text-center shadow-xs">
+                <div className="w-6 h-6 border-2 border-zinc-300 border-t-[#0071e3] rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-xs text-zinc-500">Loading pending submissions...</p>
+              </div>
+            ) : filteredUnderReview.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-white border border-zinc-200/90 text-center space-y-2 shadow-xs">
+                <CheckCircle2 size={32} className="mx-auto text-emerald-500" />
+                <p className="text-sm font-bold text-zinc-800">
+                  {searchQuery ? `No submissions found matching "${searchQuery}"` : 'Queue is Clear'}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {searchQuery ? 'Try clearing your search query.' : 'There are currently no games waiting under review.'}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredUnderReview.map((item) => (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-sm space-y-4 relative overflow-hidden"
+                  >
+                    <div className="flex items-start gap-3.5">
+                      <img
+                        src={item.logo_url || '/icon.png'}
+                        alt={item.title}
+                        className="w-14 h-14 rounded-2xl object-cover bg-zinc-100 border border-zinc-200 shrink-0 shadow-xs"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-extrabold uppercase tracking-wider">
+                            UNDER REVIEW
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-zinc-100 text-zinc-700 text-[10px] font-semibold uppercase">
+                            {item.category || 'GAME'}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 text-[10px] font-mono font-bold" title={`Permanent Game ID: ${item.game_id || item.id}`}>
+                            ID: {item.game_id || item.id}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-zinc-900 tracking-tight truncate mt-1">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-zinc-600 truncate">
+                          Studio: <strong className="text-zinc-800">{item.creator}</strong>
+                        </p>
+                        {(item.email || item.publisher_email) && (
+                          <p className="text-xs text-zinc-500 truncate flex items-center gap-1.5 mt-0.5">
+                            <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                            <span className="font-mono text-[11px] text-zinc-700">{item.email || item.publisher_email}</span>
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Banner Preview if uploaded */}
+                    {item.banner_url && (
+                      <div className="w-full h-28 rounded-xl overflow-hidden border border-zinc-200 relative bg-zinc-100">
+                        <img
+                          src={item.banner_url}
+                          alt="Banner Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <span className="absolute bottom-1.5 left-2 px-2 py-0.5 rounded bg-black/75 backdrop-blur-md text-[9px] font-semibold text-white">
+                          Landscape Banner
                         </span>
                       </div>
-                      <h3 className="text-base font-bold text-zinc-900 tracking-tight truncate mt-1">
-                        {item.title}
-                      </h3>
-                      <p className="text-xs text-zinc-600 truncate">
-                        Studio: <strong className="text-zinc-800">{item.creator}</strong>
-                      </p>
-                      {(item.email || item.publisher_email) && (
-                        <p className="text-xs text-zinc-500 truncate flex items-center gap-1.5 mt-0.5">
-                          <Mail className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                          <span className="font-mono text-[11px] text-zinc-700">{item.email || item.publisher_email}</span>
+                    )}
+
+                    {/* Description / Metadata */}
+                    <div className="space-y-1.5 text-xs">
+                      {item.tagline && (
+                        <p className="text-zinc-700 font-semibold italic text-[11px]">
+                          "{item.tagline}"
                         </p>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Banner Preview if uploaded */}
-                  {item.banner_url && (
-                    <div className="w-full h-28 rounded-xl overflow-hidden border border-zinc-200 relative bg-zinc-100">
-                      <img
-                        src={item.banner_url}
-                        alt="Banner Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <span className="absolute bottom-1.5 left-2 px-2 py-0.5 rounded bg-black/75 backdrop-blur-md text-[9px] font-semibold text-white">
-                        Landscape Banner
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Description / Metadata */}
-                  <div className="space-y-1.5 text-xs">
-                    {item.tagline && (
-                      <p className="text-zinc-700 font-semibold italic text-[11px]">
-                        "{item.tagline}"
+                      <p className="text-zinc-600 line-clamp-2 leading-relaxed text-[11px]">
+                        {item.description}
                       </p>
-                    )}
-                    <p className="text-zinc-600 line-clamp-2 leading-relaxed text-[11px]">
-                      {item.description}
-                    </p>
-                    <div className="flex items-center gap-2 pt-1 text-[11px] text-zinc-500">
-                      <span className="font-semibold text-zinc-700">URL:</span>
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-[#0071e3] hover:underline truncate flex items-center gap-1 font-mono"
+                      <div className="flex items-center gap-2 pt-1 text-[11px] text-zinc-500">
+                        <span className="font-semibold text-zinc-700">URL:</span>
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[#0071e3] hover:underline truncate flex items-center gap-1 font-mono"
+                        >
+                          <span className="truncate">{item.url}</span>
+                          <ExternalLink size={11} className="shrink-0" />
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Approve / Reject / Edit Actions */}
+                    <div className="pt-2 border-t border-zinc-100 flex items-center justify-end gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        disabled={actionInProgress === item.id}
+                        onClick={() => handleOpenEditModal(item, true)}
+                        className="px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
-                        <span className="truncate">{item.url}</span>
-                        <ExternalLink size={11} className="shrink-0" />
-                      </a>
+                        <Pencil size={12} />
+                        <span>Edit Details</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={actionInProgress === item.id}
+                        onClick={() => handleOpenRejectModal(item)}
+                        className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <X size={13} />
+                        <span>Reject & Delete</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={actionInProgress === item.id}
+                        onClick={() => handleApprove(item)}
+                        className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {actionInProgress === item.id ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            <span>Publishing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check size={14} className="stroke-[3]" />
+                            <span>Approve & Publish</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
-
-                  {/* Approve / Reject / Edit Actions */}
-                  <div className="pt-2 border-t border-zinc-100 flex items-center justify-end gap-2 flex-wrap">
-                    <button
-                      type="button"
-                      disabled={actionInProgress === item.id}
-                      onClick={() => handleOpenEditModal(item, true)}
-                      className="px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      <Pencil size={12} />
-                      <span>Edit Details</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={actionInProgress === item.id}
-                      onClick={() => handleReject(item)}
-                      className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      <X size={13} />
-                      <span>Reject & Delete</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={actionInProgress === item.id}
-                      onClick={() => handleApprove(item)}
-                      className="px-4 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                    >
-                      {actionInProgress === item.id ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span>Publishing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Check size={14} className="stroke-[3]" />
-                          <span>Approve & Publish</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
 
         {/* =========================================================================
             SECTION 2: ALL GAMES ON FIREBASE WITH TOGGLE SWITCHES & EDIT
             ========================================================================= */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            <div>
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900 flex items-center gap-2">
-                <Layers size={18} className="text-[#0071e3]" />
-                <span>All Games on Firebase</span>
-              </h2>
-              <p className="text-xs text-zinc-600 mt-0.5">
-                Each game has its own toggle switch. <strong>Turning a game OFF immediately removes it from the website.</strong>
-              </p>
+        {(catalogFilter === 'all' || catalogFilter === 'live' || catalogFilter === 'disabled') && (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900 flex items-center gap-2">
+                  <Layers size={18} className="text-[#0071e3]" />
+                  <span>
+                    {catalogFilter === 'live'
+                      ? `Live Games on Site (${filteredGames.length})`
+                      : catalogFilter === 'disabled'
+                      ? `Hidden / Disabled Games (${filteredGames.length})`
+                      : `All Games on Firebase (${filteredGames.length})`}
+                  </span>
+                </h2>
+                <p className="text-xs text-zinc-600 mt-0.5">
+                  {catalogFilter === 'live'
+                    ? 'Displaying active games currently published and visible to players.'
+                    : catalogFilter === 'disabled'
+                    ? 'Displaying games toggled off or hidden from the public player catalog.'
+                    : 'Each game has its own toggle switch. Turning a game OFF immediately removes it from the website.'}
+                </p>
+              </div>
+
+              {/* Search Box */}
+              <div className="w-full sm:w-64 relative">
+                <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search games or studio..."
+                  className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white border border-zinc-300 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
+                />
+              </div>
             </div>
 
-            {/* Search Box */}
-            <div className="w-full sm:w-64 relative">
-              <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search games or studio..."
-                className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white border border-zinc-300 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3] transition shadow-xs"
-              />
-            </div>
-          </div>
-
-          {isLoadingData ? (
-            <div className="p-10 rounded-2xl bg-white border border-zinc-200 text-center shadow-xs">
-              <div className="w-6 h-6 border-2 border-zinc-300 border-t-[#0071e3] rounded-full animate-spin mx-auto mb-2" />
-              <p className="text-xs text-zinc-500">Loading catalog games...</p>
-            </div>
-          ) : filteredGames.length === 0 ? (
-            <div className="p-8 rounded-2xl bg-white border border-zinc-200 text-center text-xs text-zinc-500 shadow-xs">
-              No games found matching "{searchQuery}".
-            </div>
-          ) : (
+            {isLoadingData ? (
+              <div className="p-10 rounded-2xl bg-white border border-zinc-200 text-center shadow-xs">
+                <div className="w-6 h-6 border-2 border-zinc-300 border-t-[#0071e3] rounded-full animate-spin mx-auto mb-2" />
+                <p className="text-xs text-zinc-500">Loading catalog games...</p>
+              </div>
+            ) : filteredGames.length === 0 ? (
+              <div className="p-8 rounded-2xl bg-white border border-zinc-200 text-center text-xs text-zinc-500 shadow-xs">
+                {searchQuery
+                  ? `No games found matching "${searchQuery}".`
+                  : catalogFilter === 'live'
+                  ? 'No live games currently active on site.'
+                  : catalogFilter === 'disabled'
+                  ? 'No disabled games found.'
+                  : 'No games found.'}
+              </div>
+            ) : (
             <div className="rounded-2xl border border-zinc-200/90 bg-white overflow-hidden shadow-sm">
               <div className="divide-y divide-zinc-100">
                 {filteredGames.map((game) => {
@@ -751,6 +1161,9 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                             </h3>
                             <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-zinc-100 text-zinc-700">
                               {game.category || 'game'}
+                            </span>
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-blue-50 text-[#0071e3] border border-blue-200" title={`Game ID: ${game.game_id || game.id}`}>
+                              ID: {game.game_id || game.id}
                             </span>
                           </div>
                           <p className="text-xs text-zinc-500 truncate mt-0.5">
@@ -846,7 +1259,23 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
             </div>
           )}
         </section>
+      )}
+    </>
+        ) : activeNav === 'tournaments' ? (
+          <AdminTournamentManager 
+            allGames={allGamesList.filter(g => !g.isUnderReview && g.active !== false && g.active !== 'false' && g.status !== 'disabled')}
+            onShowToast={showToast}
+          />
+        ) : (
+          <AdminGiftManager 
+            activeSubTab={activeNav}
+            hideTopNav={true}
+            onShowToast={showToast}
+            onGiftsCountChange={(count) => setGiftsCount(count)}
+          />
+        )}
       </main>
+    </div>
 
       {/* =========================================================================
           EDIT GAME DETAILS MODAL
@@ -1206,24 +1635,192 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
         </div>
       )}
 
+      {/* Rejection Reason & Feedback Modal */}
+      {rejectingSubmission && (
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSubmittingRejection) {
+              handleCloseRejectModal();
+            }
+          }}
+        >
+          <div 
+            className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-200 overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-150"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reject-modal-title"
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-zinc-100 flex items-center justify-between bg-red-50/70 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-red-100 border border-red-200 flex items-center justify-center text-red-600 shrink-0">
+                  <AlertCircle size={18} />
+                </div>
+                <div>
+                  <h3 id="reject-modal-title" className="text-sm font-black text-zinc-900 tracking-tight">
+                    Reject Game Submission
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 font-medium">
+                    Attach clear feedback explaining why this entry cannot be approved
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={isSubmittingRejection}
+                onClick={handleCloseRejectModal}
+                className="w-8 h-8 rounded-xl bg-white hover:bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-500 hover:text-zinc-800 transition cursor-pointer disabled:opacity-50"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Modal Body & Form */}
+            <form id="reject-game-form" onSubmit={handleConfirmReject} className="p-6 overflow-y-auto space-y-4 text-left">
+              {/* Submission Information Snapshot */}
+              <div className="p-3.5 rounded-2xl bg-zinc-50 border border-zinc-200/90 flex items-center gap-3.5">
+                <img
+                  src={rejectingSubmission.logo_url || '/icon.png'}
+                  alt={rejectingSubmission.title || rejectingSubmission.name}
+                  className="w-12 h-12 rounded-xl object-cover bg-white border border-zinc-200 shrink-0 shadow-2xs"
+                />
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-bold text-zinc-900 truncate">
+                    {rejectingSubmission.title || rejectingSubmission.name}
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 truncate">
+                    Publisher: <strong className="text-zinc-700">{rejectingSubmission.creator || rejectingSubmission.studioName || 'Independent Studio'}</strong>
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-1 text-[11px] text-zinc-600">
+                    <Mail size={12} className="text-zinc-400 shrink-0" />
+                    <span className="font-mono text-zinc-800 truncate">
+                      {rejectingSubmission.email || rejectingSubmission.publisher_email || 'No recipient email on file'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Preset Rejection Reason Chips */}
+              <div className="space-y-2">
+                <span className="block text-xs font-bold text-zinc-700">
+                  Quick Preset Reasons (Click to append):
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {PRESET_REJECTION_REASONS.map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setRejectionReason((prev) => {
+                          const trimmed = prev.trim();
+                          if (!trimmed) return preset;
+                          if (trimmed.includes(preset)) return trimmed;
+                          return `${trimmed}\n• ${preset}`;
+                        });
+                      }}
+                      className="px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-700 text-left transition cursor-pointer active:scale-98"
+                    >
+                      + {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Textarea for Rejection Reason */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="rejection-reason" className="block text-xs font-bold text-zinc-800">
+                    Reason for Rejection <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-zinc-400 font-mono">
+                    {rejectionReason.length} characters
+                  </span>
+                </div>
+                <textarea
+                  id="rejection-reason"
+                  rows={4}
+                  required
+                  value={rejectionReason}
+                  onChange={(e) => setRejectionReason(e.target.value)}
+                  placeholder="Type the specific reason why this game is being rejected and what the developer needs to fix before resubmitting..."
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-zinc-300 text-xs text-zinc-900 placeholder:text-zinc-400 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-100 transition resize-y leading-relaxed font-sans"
+                />
+                <p className="text-[11px] text-zinc-500 leading-normal">
+                  This message is attached to the notification email sent to the publisher so they understand what needs correction.
+                </p>
+              </div>
+
+              {/* Warning Notice Box */}
+              <div className="p-3 rounded-xl bg-amber-50/80 border border-amber-200 text-amber-900 text-[11px] leading-relaxed flex items-start gap-2">
+                <AlertCircle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Immediate action:</strong> Confirming rejection deletes the pending submission from the queue and dispatches the notice email to the developer.
+                </span>
+              </div>
+            </form>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-zinc-200 bg-zinc-50 flex items-center justify-between shrink-0">
+              <button
+                type="button"
+                disabled={isSubmittingRejection}
+                onClick={handleCloseRejectModal}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-zinc-600 hover:text-zinc-900 transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                form="reject-game-form"
+                disabled={isSubmittingRejection || !rejectionReason.trim()}
+                className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-98 text-white text-xs font-bold transition shadow-sm shadow-red-500/20 flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmittingRejection ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Rejecting & Sending...</span>
+                  </>
+                ) : (
+                  <>
+                    <X size={14} className="stroke-[3]" />
+                    <span>Confirm Rejection & Send Notice</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Floating Status Notification Toast */}
       {toastMessage && (
         <div
           role="status"
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-xl border text-xs font-bold flex items-center gap-2.5 animate-in slide-in-from-bottom-3 duration-200 select-none ${
+          data-keep-white
+          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-2.5 animate-in slide-in-from-bottom-3 duration-200 select-none ${
             toastMessage.type === 'error'
-              ? 'bg-red-50 border-red-200 text-red-800'
+              ? 'bg-red-50 border-red-200 text-red-900 shadow-red-500/10'
               : toastMessage.type === 'info'
-              ? 'bg-zinc-900 border-zinc-800 text-white'
-              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              ? 'bg-zinc-900 border-zinc-700/80 text-white shadow-2xl ring-1 ring-white/10'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-emerald-500/10'
           }`}
         >
           {toastMessage.type === 'error' ? (
             <AlertCircle size={16} className="text-red-600 shrink-0" />
+          ) : toastMessage.type === 'info' ? (
+            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
           ) : (
             <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
           )}
-          <span>{toastMessage.message}</span>
+          <span 
+            data-keep-white
+            style={toastMessage.type === 'info' ? { color: '#ffffff' } : undefined}
+            className={toastMessage.type === 'info' ? 'text-white font-bold tracking-normal' : 'tracking-normal'}
+          >
+            {toastMessage.message}
+          </span>
         </div>
       )}
     </div>
