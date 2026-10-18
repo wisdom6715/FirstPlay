@@ -1,4 +1,13 @@
 import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
+import dns from 'node:dns';
+
+// Set DNS resolution to prefer IPv4 first to eliminate transient EAI_AGAIN lookup errors
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {
+  // Ignored if unsupported
+}
 
 /**
  * Valid support issue categories as specified in requirements
@@ -289,30 +298,44 @@ ${cleanMessage}
 To reply directly to the user, send an email to: ${cleanEmail}
 `;
 
-    // 9. Dispatch via Resend API
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: recipients,
-        reply_to: cleanEmail,
-        subject,
-        html,
-        text
-      })
-    });
+    // 9. Dispatch via Resend SDK with automatic retry for transient network/DNS glitches
+    const resend = new Resend(apiKey);
+    let sendResult = null;
+    let lastError = null;
 
-    const resendData = await resendResponse.json().catch(() => ({}));
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const result = await resend.emails.send({
+          from: fromAddress,
+          to: recipients,
+          replyTo: cleanEmail,
+          subject,
+          html,
+          text
+        });
 
-    if (!resendResponse.ok) {
-      console.error('[Resend Support Dispatch Error]', resendData);
+        if (result.error) {
+          lastError = result.error;
+          console.error(`[Resend Support Dispatch Error - Attempt ${attempt}]`, result.error);
+        } else {
+          sendResult = result.data;
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+        console.error(`[Resend Network Exception - Attempt ${attempt}]`, err);
+      }
+
+      if (attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    if (!sendResult) {
+      console.error('[Resend Support Final Failure]', lastError);
       return NextResponse.json(
-        { error: 'Unable to deliver message right now. Please try again or email support@firstplay.fun directly.' },
-        { status: resendResponse.status || 502 }
+        { error: lastError?.message || 'Unable to deliver message right now. Please try again or email support@firstplay.fun directly.' },
+        { status: 502 }
       );
     }
 
