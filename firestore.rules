@@ -1,554 +1,67 @@
 rules_version = '2';
 
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
-//
-// Collection: admins
-// Document ID: {adminId} (either request.auth.uid or email address)
-// Fields:
-//   - email: string (required, 5-100 chars, valid email format)
-//   - active: bool (optional, defaults true)
-//   - role: string (optional, e.g., 'admin', 'superadmin', 'editor')
-//   - name / full_name: string (optional, 1-150 chars)
-//   - totp_secret: string (optional, base32 secret for MFA, 1-128 chars)
-//   - mfa_enabled: bool (optional)
-//   - mfa_enrolled_at: timestamp (optional)
-//   - created_at: timestamp (optional, immutable)
-//   - updated_at: timestamp (optional)
-//
-// Collection: apps (and listings)
-// Document ID: {appId}
-// Fields:
-//   - name / game_name / app_name / product_name / title: string (required, 1-150 chars)
-//   - category: string (required, 'game' | 'app' | 'product')
-//   - url / game_url / app_url / product_url: string (required, 1-500 chars)
-//   - logo / logo_url / banner / banner_url / flyer: string (optional, <= 1000 chars)
-//   - tagline: string (optional, <= 300 chars)
-//   - description: string (optional, <= 3000 chars)
-//   - creator / full_name / studioName / origin: string (optional, <= 150 chars)
-//   - tags: list of strings (optional, <= 20 items, <= 30 chars each)
-//   - rating: number (optional, 0.0 - 5.0)
-//   - plays_count: number (optional, >= 0)
-//   - status: string (optional, 'active' | 'disabled' | 'hidden' | 'archived')
-//   - active: bool (optional)
-//   - requires_fullscreen: bool (optional)
-//   - open_in_app: bool (optional)
-//   - created_at: timestamp (optional, immutable)
-//   - updated_at: timestamp (optional)
-//
-// Collection: under_review
-// Document ID: {submissionId}
-// Fields:
-//   - title / name / game_name: string (required, 1-150 chars)
-//   - url / game_url: string (required, 1-500 chars)
-//   - email / publisher_email: string (required, valid email, <= 100 chars)
-//   - category: string (required, 'game' | 'app' | 'product')
-//   - status: string (required, strictly 'under_review')
-//   - active: bool (required, strictly false)
-//   - payment_status: string (optional, 'free' | 'pending' | 'paid')
-//   - tagline: string (optional, <= 300 chars)
-//   - description: string (optional, <= 3000 chars)
-//   - full_name / studioName: string (optional, <= 150 chars)
-//   - logo / logo_url / flyer / banner / banner_url: string (optional, <= 1000 chars)
-//   - open_in_app: bool (optional)
-//   - created_at: timestamp (optional)
-//
-// Collection: pending_campaigns
-// Document ID: {campaignId}
-// Fields:
-//   - title / name: string (required, 1-150 chars)
-//   - url: string (required, 1-500 chars)
-//   - email / publisher_email: string (required, valid email, <= 100 chars)
-//   - category: string (required, 'app' | 'product' | 'game')
-//   - paymentStatus: string (required, 'pending' | 'paid' | 'cancelled')
-//   - reference: string (required, <= 100 chars)
-//   - amount: number (optional, >= 0)
-//   - paymentLinkId: string (optional, <= 100 chars)
-//   - created_at: timestamp (optional)
-//
-// Collection: promotional
-// Document ID: {bannerId}
-// Fields:
-//   - title / subtitle: string (optional, <= 200 chars)
-//   - image_url / imageUrl / banner_url: string (optional, <= 1000 chars)
-//   - link / url / target: string (optional, <= 500 chars)
-//   - active: bool (optional)
-//   - status: string (optional, <= 50 chars)
-//   - created_at: timestamp (optional)
-//
-// Collection: tournaments
-// Document ID: {tournamentId}
-// Fields:
-//   - tournament_name: string (required, 1-150 chars)
-//   - game_id: string (required, 1-100 chars)
-//   - status: string (required, 'upcoming' | 'ongoing' | 'completed' | 'cancelled' | 'hidden')
-//   - starts_at: timestamp (required)
-//   - ends_at: timestamp (required)
-//   - prize_pool: number (optional, >= 0)
-//   - prize_distribution: map (optional)
-//   - prize_description: string (optional, <= 200 chars)
-//   - is_hidden: bool (optional)
-//   - created_at: timestamp (optional, immutable)
-//
-// Collection: tournament_participants
-// Document ID: {participantId} (typically {tournamentId}_{userId})
-// Fields:
-//   - tournament_id: string (required, 1-100 chars, immutable)
-//   - user_id: string (required, 1-128 chars, immutable)
-//   - username: string (optional, <= 50 chars)
-//   - score: number (optional, >= 0 and < 1000000000)
-//   - highest_score: number (optional, >= 0 and < 1000000000)
-//   - has_played / played / score_submitted: bool (optional)
-//   - submitted_at / created_at: timestamp (optional)
-//
-// Collection: prize_redemptions
-// Document ID: {redemptionId} (e.g., {tournamentId}_{userId})
-// Fields:
-//   - redemption_id: string (required, 1-150 chars)
-//   - tournament_id: string (required, 1-100 chars, immutable)
-//   - user_id: string (required, 1-128 chars, immutable)
-//   - tournament_name: string (optional, <= 150 chars)
-//   - username: string (optional, <= 50 chars)
-//   - rank: number (optional, 1-100, immutable)
-//   - prize_amount: string (optional, <= 100 chars, immutable)
-//   - status: string (required, 'pending' | 'processing' | 'approved' | 'paid' | 'rejected' | 'failed')
-//   - created_at: timestamp (optional, immutable)
-//
-// Collection: spin_gift
-// Document ID: {giftDocId}
-// Fields:
-//   - code: string (required, 4-30 chars, immutable)
-//   - gift: string (required, 1-100 chars, immutable)
-//   - amount_mb: number (optional, >= 0, immutable)
-//   - status: string (required, 'active' | 'used' | 'expired')
-//   - redeem_url: string (optional, <= 300 chars, immutable)
-//   - created_at: timestamp (optional, immutable)
-//   - redeemed_at: timestamp (optional)
-//
-// Collection: redemptions
-// Document ID: {redemptionId}
-// Fields:
-//   - redemption_code: string (required, 4-30 chars, immutable)
-//   - category: string (required, 'gift' | 'tournament')
-//   - user_id: string (optional, <= 128 chars)
-//   - user_name: string (optional, <= 100 chars)
-//   - status: string (required, 'pending' | 'processing' | 'completed' | 'failed' | 'expired' | 'redeemed')
-//   - is_used: bool (required)
-//   - quantity: number (optional, >= 0)
-//   - expires_at: timestamp (optional)
-//   - created_at: timestamp (optional)
-//
-// Collection: redemption_contacts
-// Document ID: {contactDocId}
-// Fields:
-//   - redemption_id: string (required, <= 150 chars)
-//   - user_id: string (optional, <= 128 chars)
-//   - whatsapp_phone_number: string (required, <= 30 chars)
-//   - created_at: timestamp (optional)
-//
-// Collection: gift_categories, gifts, wheel_configs
-// Document ID: {docId}
-// Fields: Dynamic reward configuration managed exclusively by admins.
-//
-// Collection: usernames, users
-// Document ID: {userId}
-// Fields: User profiles and game player handles.
-// ===============================================================
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ===============================================================
-    // Global Helper Functions
-    // ===============================================================
-
-    function isAuthenticated() {
+    // Helper: Check if user is authenticated (all Firebase Auth accounts are Admins in FirstPlay)
+    function isAdmin() {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-
-    // Verifies whether current user exists in the 'admins' collection and is active.
-    // Checks UID document, lowercase email document, and raw email document.
-    function isAdmin() {
-      return isAuthenticated() && (
-        (exists(/databases/$(database)/documents/admins/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.active != false) ||
-        (request.auth.token.email != null &&
-         exists(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())) &&
-         get(/databases/$(database)/documents/admins/$(request.auth.token.email.lower())).data.active != false) ||
-        (request.auth.token.email != null &&
-         exists(/databases/$(database)/documents/admins/$(request.auth.token.email)) &&
-         get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.active != false)
-      );
-    }
-
-    function hasOnlyAllowedFields(fields) {
-      return request.resource.data.keys().hasOnly(fields);
-    }
-
-    function areImmutableFieldsUnchanged(fields) {
-      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
-    }
-
-    function isValidEmail(email) {
-      return email is string &&
-        email.size() >= 5 &&
-        email.size() <= 100 &&
-        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
-    }
-
-    function isValidUrl(url) {
-      return url is string &&
-        url.size() >= 1 &&
-        url.size() <= 500 &&
-        (url.matches("^https?://.*") || url.matches("^/.*"));
-    }
-
-    function isValidOptionalString(data, field, minLen, maxLen) {
-      return !(field in data) || data[field] == null ||
-             (data[field] is string && data[field].size() >= minLen && data[field].size() <= maxLen);
-    }
-
-    // ===============================================================
-    // Domain Validators (Applied across both create & update)
-    // ===============================================================
-
-    function isValidAdmin(data) {
-      return data.email is string &&
-        isValidEmail(data.email) &&
-        isValidOptionalString(data, 'name', 1, 150) &&
-        isValidOptionalString(data, 'full_name', 1, 150) &&
-        isValidOptionalString(data, 'role', 1, 50) &&
-        isValidOptionalString(data, 'totp_secret', 1, 128) &&
-        (!('active' in data) || data.active is bool) &&
-        (!('mfa_enabled' in data) || data.mfa_enabled is bool) &&
-        (!('mfa_enrolled_at' in data) || data.mfa_enrolled_at == null || data.mfa_enrolled_at is timestamp) &&
-        (!('created_at' in data) || data.created_at == null || data.created_at is timestamp) &&
-        (!('updated_at' in data) || data.updated_at == null || data.updated_at is timestamp);
-    }
-
-    function isValidApp(data) {
-      return (
-        (('name' in data && data.name is string && data.name.size() > 0 && data.name.size() <= 150) ||
-         ('game_name' in data && data.game_name is string && data.game_name.size() > 0 && data.game_name.size() <= 150) ||
-         ('app_name' in data && data.app_name is string && data.app_name.size() > 0 && data.app_name.size() <= 150) ||
-         ('product_name' in data && data.product_name is string && data.product_name.size() > 0 && data.product_name.size() <= 150) ||
-         ('title' in data && data.title is string && data.title.size() > 0 && data.title.size() <= 150)) &&
-        (!('category' in data) || (data.category is string && data.category in ['game', 'app', 'product'])) &&
-        (('url' in data && isValidUrl(data.url)) ||
-         ('game_url' in data && isValidUrl(data.game_url)) ||
-         ('app_url' in data && isValidUrl(data.app_url)) ||
-         ('product_url' in data && isValidUrl(data.product_url))) &&
-        isValidOptionalString(data, 'description', 0, 3000) &&
-        isValidOptionalString(data, 'tagline', 0, 300) &&
-        isValidOptionalString(data, 'logo', 0, 1000) &&
-        isValidOptionalString(data, 'logo_url', 0, 1000) &&
-        isValidOptionalString(data, 'banner', 0, 1000) &&
-        isValidOptionalString(data, 'banner_url', 0, 1000) &&
-        isValidOptionalString(data, 'flyer', 0, 1000) &&
-        isValidOptionalString(data, 'creator', 0, 150) &&
-        isValidOptionalString(data, 'full_name', 0, 150) &&
-        isValidOptionalString(data, 'studioName', 0, 150) &&
-        isValidOptionalString(data, 'origin', 0, 100) &&
-        isValidOptionalString(data, 'status', 0, 50) &&
-        (!('tags' in data) || (data.tags is list && data.tags.size() <= 20)) &&
-        (!('rating' in data) || (data.rating is number && data.rating >= 0 && data.rating <= 5)) &&
-        (!('plays_count' in data) || (data.plays_count is number && data.plays_count >= 0)) &&
-        (!('active' in data) || data.active is bool) &&
-        (!('requires_fullscreen' in data) || data.requires_fullscreen is bool) &&
-        (!('open_in_app' in data) || data.open_in_app is bool)
-      );
-    }
-
-    function isValidUnderReviewSubmission(data) {
-      return (
-        data.status == 'under_review' &&
-        data.active == false &&
-        (('email' in data && isValidEmail(data.email)) ||
-         ('publisher_email' in data && isValidEmail(data.publisher_email))) &&
-        (('title' in data && data.title is string && data.title.size() > 0 && data.title.size() <= 150) ||
-         ('name' in data && data.name is string && data.name.size() > 0 && data.name.size() <= 150) ||
-         ('game_name' in data && data.game_name is string && data.game_name.size() > 0 && data.game_name.size() <= 150)) &&
-        (('url' in data && isValidUrl(data.url)) ||
-         ('game_url' in data && isValidUrl(data.game_url))) &&
-        (!('category' in data) || (data.category is string && data.category in ['game', 'app', 'product'])) &&
-        isValidOptionalString(data, 'tagline', 0, 300) &&
-        isValidOptionalString(data, 'description', 0, 3000) &&
-        isValidOptionalString(data, 'full_name', 0, 150) &&
-        isValidOptionalString(data, 'studioName', 0, 150) &&
-        isValidOptionalString(data, 'logo', 0, 1000) &&
-        isValidOptionalString(data, 'logo_url', 0, 1000) &&
-        isValidOptionalString(data, 'banner', 0, 1000) &&
-        isValidOptionalString(data, 'banner_url', 0, 1000) &&
-        isValidOptionalString(data, 'flyer', 0, 1000) &&
-        isValidOptionalString(data, 'payment_status', 0, 50) &&
-        (!('open_in_app' in data) || data.open_in_app is bool)
-      );
-    }
-
-    function isValidPendingCampaign(data) {
-      return (
-        (('email' in data && isValidEmail(data.email)) ||
-         ('publisher_email' in data && isValidEmail(data.publisher_email))) &&
-        (('title' in data && data.title is string && data.title.size() > 0 && data.title.size() <= 150) ||
-         ('name' in data && data.name is string && data.name.size() > 0 && data.name.size() <= 150)) &&
-        ('url' in data && isValidUrl(data.url)) &&
-        data.paymentStatus in ['pending', 'paid', 'cancelled'] &&
-        isValidOptionalString(data, 'reference', 1, 100) &&
-        isValidOptionalString(data, 'tagline', 0, 300) &&
-        isValidOptionalString(data, 'description', 0, 3000) &&
-        isValidOptionalString(data, 'studioName', 0, 150) &&
-        isValidOptionalString(data, 'icon', 0, 1000) &&
-        isValidOptionalString(data, 'banner', 0, 1000) &&
-        (!('amount' in data) || (data.amount is number && data.amount >= 0))
-      );
-    }
-
-    function isValidPromotional(data) {
-      return (
-        isValidOptionalString(data, 'title', 0, 200) &&
-        isValidOptionalString(data, 'subtitle', 0, 200) &&
-        isValidOptionalString(data, 'image_url', 0, 1000) &&
-        isValidOptionalString(data, 'imageUrl', 0, 1000) &&
-        isValidOptionalString(data, 'banner_url', 0, 1000) &&
-        isValidOptionalString(data, 'link', 0, 500) &&
-        isValidOptionalString(data, 'url', 0, 500) &&
-        isValidOptionalString(data, 'target', 0, 500) &&
-        isValidOptionalString(data, 'status', 0, 50) &&
-        (!('active' in data) || data.active is bool)
-      );
-    }
-
-    function isValidTournament(data) {
-      return (
-        data.tournament_name is string && data.tournament_name.size() > 0 && data.tournament_name.size() <= 150 &&
-        data.game_id is string && data.game_id.size() > 0 && data.game_id.size() <= 100 &&
-        data.status in ['upcoming', 'ongoing', 'completed', 'cancelled', 'hidden'] &&
-        data.starts_at is timestamp &&
-        data.ends_at is timestamp &&
-        (!('prize_pool' in data) || (data.prize_pool is number && data.prize_pool >= 0)) &&
-        isValidOptionalString(data, 'description', 0, 2000) &&
-        isValidOptionalString(data, 'game_name', 0, 150) &&
-        isValidOptionalString(data, 'game_logo', 0, 1000) &&
-        isValidOptionalString(data, 'tournament_img', 0, 1000) &&
-        isValidOptionalString(data, 'prize_description', 0, 200) &&
-        (!('is_hidden' in data) || data.is_hidden is bool) &&
-        (!('max_participants' in data) || (data.max_participants is number && data.max_participants > 0)) &&
-        (!('prize_distribution' in data) || data.prize_distribution is map)
-      );
-    }
-
-    function isValidParticipant(data) {
-      return (
-        data.tournament_id is string && data.tournament_id.size() > 0 && data.tournament_id.size() <= 100 &&
-        data.user_id is string && data.user_id.size() > 0 && data.user_id.size() <= 128 &&
-        isValidOptionalString(data, 'username', 0, 50) &&
-        (!('score' in data) || data.score == null || (data.score is number && data.score >= 0 && data.score < 1000000000)) &&
-        (!('highest_score' in data) || data.highest_score == null || (data.highest_score is number && data.highest_score >= 0 && data.highest_score < 1000000000)) &&
-        (!('has_played' in data) || data.has_played is bool) &&
-        (!('played' in data) || data.played is bool) &&
-        (!('score_submitted' in data) || data.score_submitted is bool)
-      );
-    }
-
-    function isValidPrizeRedemption(data) {
-      return (
-        data.redemption_id is string && data.redemption_id.size() > 0 && data.redemption_id.size() <= 150 &&
-        data.tournament_id is string && data.tournament_id.size() > 0 && data.tournament_id.size() <= 100 &&
-        data.user_id is string && data.user_id.size() > 0 && data.user_id.size() <= 128 &&
-        data.status in ['pending', 'processing', 'approved', 'paid', 'rejected', 'failed'] &&
-        isValidOptionalString(data, 'tournament_name', 0, 150) &&
-        isValidOptionalString(data, 'username', 0, 50) &&
-        isValidOptionalString(data, 'prize_amount', 0, 100) &&
-        (!('rank' in data) || (data.rank is number && data.rank >= 1 && data.rank <= 100))
-      );
-    }
-
-    function isValidSpinGift(data) {
-      return (
-        data.code is string && data.code.size() >= 4 && data.code.size() <= 30 &&
-        data.gift is string && data.gift.size() > 0 && data.gift.size() <= 100 &&
-        data.status in ['active', 'used', 'expired'] &&
-        (!('amount_mb' in data) || (data.amount_mb is number && data.amount_mb >= 0)) &&
-        isValidOptionalString(data, 'redeem_url', 0, 300)
-      );
-    }
-
-    function isValidRedemption(data) {
-      return (
-        data.redemption_code is string && data.redemption_code.size() >= 4 && data.redemption_code.size() <= 30 &&
-        data.category in ['gift', 'tournament'] &&
-        data.is_used is bool &&
-        data.status in ['pending', 'processing', 'completed', 'failed', 'expired', 'redeemed'] &&
-        isValidOptionalString(data, 'user_id', 0, 128) &&
-        isValidOptionalString(data, 'user_name', 0, 100) &&
-        isValidOptionalString(data, 'gift_name', 0, 100) &&
-        (!('quantity' in data) || (data.quantity is number && data.quantity >= 0))
-      );
-    }
-
-    function isValidRedemptionContact(data) {
-      return (
-        data.redemption_id is string && data.redemption_id.size() > 0 && data.redemption_id.size() <= 150 &&
-        data.whatsapp_phone_number is string && data.whatsapp_phone_number.size() >= 7 && data.whatsapp_phone_number.size() <= 30 &&
-        isValidOptionalString(data, 'user_id', 0, 128)
-      );
-    }
-
-    // ===============================================================
-    // Collection Rules
-    // ===============================================================
-
-    // 1. Admins Collection
-    // Read: Authenticated admin can read their own record (by UID, email doc ID, or email query)
-    // Create / Delete: Restricted to active admins
-    // Update: Active admin or owner enrolling in TOTP MFA
-    match /admins/{adminId} {
-      allow read: if isAuthenticated() && (
-        request.auth.uid == adminId ||
-        (request.auth.token.email != null && (
-          request.auth.token.email.lower() == adminId.lower() ||
-          request.auth.token.email == adminId ||
-          (resource != null && 'email' in resource.data && (
-            resource.data.email.lower() == request.auth.token.email.lower() ||
-            resource.data.email == request.auth.token.email
-          ))
-        )) ||
-        isAdmin()
-      );
-
-      allow create: if isAdmin() && isValidAdmin(request.resource.data);
-
-      allow update: if (
-        (isAdmin() && isValidAdmin(request.resource.data) && areImmutableFieldsUnchanged(['email', 'created_at'])) ||
-        (isAuthenticated() &&
-         (request.auth.uid == adminId || (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower())) &&
-         resource.data.active != false &&
-         isValidAdmin(request.resource.data) &&
-         areImmutableFieldsUnchanged(['email', 'active', 'role', 'created_at']) &&
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['totp_secret', 'mfa_enabled', 'mfa_enrolled_at', 'updated_at']))
-      );
-
-      allow delete: if isAdmin() && request.auth.uid != adminId;
-    }
-
-    // 2. Apps Collection (and Listings alias)
-    // Public read for instant web game visitors; full write restricted to admins.
+    // 1. Administrative Collections (Catalog & Content)
+    // Public read for instant web game visitors; full write for authenticated administrators.
     match /apps/{appId} {
       allow read: if true;
-      allow create: if isAdmin() && isValidApp(request.resource.data);
-      allow update: if isAdmin() && isValidApp(request.resource.data) && areImmutableFieldsUnchanged(['id', 'game_id', 'created_at']);
-      allow delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
     match /listings/{listingId} {
       allow read: if true;
-      allow create: if isAdmin() && isValidApp(request.resource.data);
-      allow update: if isAdmin() && isValidApp(request.resource.data) && areImmutableFieldsUnchanged(['id', 'game_id', 'created_at']);
-      allow delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    // 3. Under Review (Publisher Game Submissions from /promote)
-    // Private queue: only admins can read submissions.
-    // Unauthenticated/client create allowed with strict schema and bounds.
-    match /under_review/{submissionId} {
-      allow read: if isAdmin();
-      allow create: if isValidUnderReviewSubmission(request.resource.data);
-      allow update: if isAdmin() && isValidUnderReviewSubmission(request.resource.data);
-      allow delete: if isAdmin();
-    }
-
-    // 4. Pending Campaigns (Paid promotional campaign drafts)
-    match /pending_campaigns/{campaignId} {
-      allow read: if isAdmin();
-      allow create: if isValidPendingCampaign(request.resource.data);
-      allow update, delete: if isAdmin();
-    }
-
-    // 5. Promotional Banners (Hero showcase carousel)
     match /promotional/{bannerId} {
       allow read: if true;
-      allow create: if isAdmin() && isValidPromotional(request.resource.data);
-      allow update: if isAdmin() && isValidPromotional(request.resource.data);
-      allow delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    // 6. Tournaments (24-Hour Competitive Tournaments)
+    // 2. Administrators Collection
+    // Read and write restricted to authenticated administrators.
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 3. Submissions from Public /promote View
+    // Public game and campaign submission on /promote; moderation restricted to admins.
+    match /under_review/{submissionId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /pending_campaigns/{campaignId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 4. Tournaments & Leaderboards
+    // Tournaments managed by admins, read by all.
     match /tournaments/{tournamentId} {
       allow read: if true;
-      allow create: if isAdmin() && isValidTournament(request.resource.data);
-      allow update: if isAdmin() && isValidTournament(request.resource.data) && areImmutableFieldsUnchanged(['tournament_id', 'created_at']);
-      allow delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    // 7. Tournament Participants (Leaderboards & Score Submissions)
+    // Tournament participants: public join and score submission.
     match /tournament_participants/{participantId} {
-      allow read: if true;
-      allow create: if isValidParticipant(request.resource.data) && (
-        isAdmin() ||
-        (isAuthenticated() ? (request.resource.data.user_id == request.auth.uid) : true)
-      );
-      allow update: if isValidParticipant(request.resource.data) && (
-        isAdmin() ||
-        (request.resource.data.user_id == resource.data.user_id &&
-         (!isAuthenticated() || request.auth.uid == resource.data.user_id) &&
-         areImmutableFieldsUnchanged(['tournament_id', 'user_id', 'created_at']))
-      );
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // 8. Prize Redemptions (Tournament Winners & Cash Claims)
+    // Prize redemptions: public claim and status updates.
     match /prize_redemptions/{redemptionId} {
-      allow read: if isAdmin() || (isAuthenticated() && resource.data.user_id == request.auth.uid);
-      allow create: if isAdmin() && isValidPrizeRedemption(request.resource.data);
-      allow update: if (
-        isAdmin() ||
-        (isAuthenticated() &&
-         resource.data.user_id == request.auth.uid &&
-         isValidPrizeRedemption(request.resource.data) &&
-         areImmutableFieldsUnchanged(['redemption_id', 'tournament_id', 'user_id', 'rank', 'prize_amount', 'created_at']))
-      );
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // 9. Spin Gift (Spin wheel rewards cache & single-use redemption)
-    match /spin_gift/{giftDocId} {
-      allow read: if true;
-      allow create: if isValidSpinGift(request.resource.data) && request.resource.data.status == 'active';
-      allow update: if isAdmin() || (
-        isValidSpinGift(request.resource.data) &&
-        areImmutableFieldsUnchanged(['code', 'gift', 'amount_mb', 'redeem_url', 'created_at']) &&
-        resource.data.status == 'active' &&
-        request.resource.data.status == 'used'
-      );
-      allow delete: if isAdmin();
-    }
-
-    // 10. Redemptions (Authoritative 24h reward codes)
-    match /redemptions/{redemptionId} {
-      allow read: if true;
-      allow create: if isAdmin() || isValidRedemption(request.resource.data);
-      allow update: if isAdmin() || (
-        isValidRedemption(request.resource.data) &&
-        areImmutableFieldsUnchanged(['redemption_code', 'category', 'created_at']) &&
-        resource.data.is_used == false &&
-        request.resource.data.is_used == true
-      );
-      allow delete: if isAdmin();
-    }
-
-    // 11. Redemption Contacts (PII Protection: User WhatsApp number)
-    match /redemption_contacts/{contactId} {
-      allow read: if isAdmin();
-      allow create: if isValidRedemptionContact(request.resource.data);
-      allow update, delete: if isAdmin();
-    }
-
-    // 12. Dynamic Reward Management
+    // 5. Rewards & Redemption Engine
+    // Wheel configs, categories, gifts managed by admins.
     match /gift_categories/{categoryId} {
       allow read: if true;
       allow write: if isAdmin();
@@ -564,14 +77,26 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // 13. User Accounts & Game Player Identity
+    // Spin gifts, redemptions, and redemption contact entries.
+    match /spin_gift/{giftDocId} {
+      allow read, write: if true;
+    }
+
+    match /redemptions/{redemptionId} {
+      allow read, write: if true;
+    }
+
+    match /redemption_contacts/{contactId} {
+      allow read, write: if true;
+    }
+
+    // 6. User Profiles & Handles
     match /usernames/{usernameId} {
-      allow read: if true;
-      allow write: if isAuthenticated() && (request.auth.uid == usernameId || isAdmin());
+      allow read, write: if true;
     }
 
     match /users/{userId} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow read, write: if true;
     }
 
     // Default Deny Fallback
