@@ -208,6 +208,18 @@ export default function Footer({
             >
               Terms of Service
             </a>
+            <a
+              href="/support"
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  onNavigateTab?.('support');
+                }
+              }}
+              className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Support &amp; Complaints
+            </a>
           </div>
         </div>
 

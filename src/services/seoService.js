@@ -207,6 +207,14 @@ export function setTabSEO(tab, categoryFilter = 'All') {
       });
       break;
 
+    case 'support':
+      updateSEO({
+        title: 'Support & Complaints — FirstPlay Help Center',
+        description: 'Need help with withdrawals, tournament prizes, account verification, or reporting a bug? Contact the official FirstPlay support resolution team.',
+        canonical: `${SITE_URL}/support`
+      });
+      break;
+
     default:
       updateSEO(DEFAULT_SEO);
   }
