@@ -2,7 +2,7 @@ import '../index.css';
 import FirstPlayClientProvider from '../components/FirstPlayClientProvider';
 
 export const metadata = {
-  metadataBase: new URL('https://firstplay.app'),
+  metadataBase: new URL('https://firstplay.fun'),
   title: 'FirstPlay — African Web Games & Digital Experiences | Play Lagos Life, Danfo Run, Monkey Post',
   description: 'Discover and play curated Nigerian and African browser games instantly with zero installation. Experience Lagos Life, Danfo Run, Monkey Post, myAbuja Life, and trending Naija web games on any device.',
   keywords: [
@@ -35,19 +35,19 @@ export const metadata = {
     },
   },
   alternates: {
-    canonical: 'https://firstplay.app/',
+    canonical: 'https://firstplay.fun/',
   },
   openGraph: {
     siteName: 'FirstPlay',
     type: 'website',
     title: 'FirstPlay — Play Lagos Life, Danfo Run, Monkey Post & Naija Games Online',
     description: 'Discover and play curated Nigerian and African browser games instantly with zero install. Experience Lagos Life, Danfo Run, Monkey Post, and top indie games on any device.',
-    url: 'https://firstplay.app/',
+    url: 'https://firstplay.fun/',
     locale: 'en_NG',
     alternateLocale: ['en_US', 'en_GB'],
     images: [
       {
-        url: 'https://firstplay.app/firstplay_x_cover.jpg',
+        url: 'https://firstplay.fun/firstplay_x_cover.jpg',
         width: 1200,
         height: 630,
         alt: 'FirstPlay - African and Naija Web Games featuring Lagos Life, Danfo Run, and Monkey Post',
