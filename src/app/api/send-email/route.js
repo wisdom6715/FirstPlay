@@ -1,4 +1,13 @@
 import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
+import dns from 'node:dns';
+
+// Set DNS resolution to prefer IPv4 first to eliminate transient EAI_AGAIN lookup errors
+try {
+  dns.setDefaultResultOrder('ipv4first');
+} catch {
+  // Ignored if unsupported
+}
 
 /**
  * Next.js Server-Side Route Handler: FirstPlay Resend Email Dispatcher
@@ -26,30 +35,48 @@ export async function POST(request) {
     }
 
     const fromAddress = process.env.RESEND_FROM_EMAIL || from || 'FirstPlay <wisdom@firstplay.fun>';
+    const recipients = Array.isArray(to) ? to : [to];
 
-    const resendResponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: fromAddress,
-        to: Array.isArray(to) ? to : [to],
-        subject,
-        html,
-        text: text || undefined
-      })
-    });
+    const resend = new Resend(apiKey);
+    let sendResult = null;
+    let lastError = null;
 
-    const data = await resendResponse.json();
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const result = await resend.emails.send({
+          from: fromAddress,
+          to: recipients,
+          subject,
+          html,
+          text: text || undefined
+        });
 
-    if (!resendResponse.ok) {
-      console.error('[Resend API Error]', data);
-      return NextResponse.json(data, { status: resendResponse.status });
+        if (result.error) {
+          lastError = result.error;
+          console.error(`[Resend Send-Email Error - Attempt ${attempt}]`, result.error);
+        } else {
+          sendResult = result.data;
+          break;
+        }
+      } catch (err) {
+        lastError = err;
+        console.error(`[Resend Send-Email Exception - Attempt ${attempt}]`, err);
+      }
+
+      if (attempt < 2) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
 
-    return NextResponse.json({ success: true, ...data });
+    if (!sendResult) {
+      console.error('[Resend Send-Email Final Failure]', lastError);
+      return NextResponse.json(
+        { error: lastError?.message || 'Failed to dispatch email' },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ success: true, ...sendResult });
   } catch (err) {
     console.error('[Next.js send-email Route Exception]', err);
     return NextResponse.json(
@@ -58,3 +85,4 @@ export async function POST(request) {
     );
   }
 }
+

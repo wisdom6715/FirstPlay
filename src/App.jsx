@@ -23,6 +23,7 @@ import { triggerPwaInstall, detectUserOS } from './utils/pwaUtils';
 import PwaDownloadNotification from './components/PwaDownloadNotification';
 import PrivacyView from './views/PrivacyView';
 import TermsView from './views/TermsView';
+import SupportView from './views/SupportView';
 import { Minimize2, X, Check, Download, Info, ExternalLink } from 'lucide-react';
 import { setTabSEO, setGameSEO, updateCatalogItemListSEO } from './services/seoService';
 import { slugify } from './sitemap';
@@ -43,6 +44,7 @@ function getTabFromPath(pathname) {
   if (clean === 'redeem') return 'redeem';
   if (clean === 'privacy' || clean === 'privacy-policy') return 'privacy';
   if (clean === 'terms-of-service' || clean === 'terms' || clean === 'termsofservice') return 'terms';
+  if (clean === 'support' || clean === 'contact' || clean === 'complaint' || clean === 'complaints' || clean === 'help') return 'support';
   return 'discover';
 }
 
@@ -52,6 +54,7 @@ function getPathFromTab(tab) {
   if (tab === 'admin-dashboard') return '/admin/dashboard';
   if (tab === 'privacy') return '/privacy';
   if (tab === 'terms') return '/terms-of-service';
+  if (tab === 'support') return '/support';
   return `/${tab}`;
 }
 
@@ -657,6 +660,14 @@ export default function App() {
                     onNavigateTab={navigateToTab}
                     onNavigateCategory={handleNavigateCategory}
                     onNavigateSection={handleNavigateSection}
+                  />
+                )}
+
+                {currentTab === 'support' && (
+                  <SupportView
+                    onNavigateTab={navigateToTab}
+                    onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
+                    onOpenTerms={handleOpenTerms}
                   />
                 )}
               </>

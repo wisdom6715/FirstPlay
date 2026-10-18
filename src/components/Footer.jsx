@@ -208,13 +208,18 @@ export default function Footer({
             >
               Terms of Service
             </a>
-            <button
-              type="button"
-              onClick={() => onNavigateTab?.('admin-dashboard')}
-              className="text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+            <a
+              href="/support"
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  onNavigateTab?.('support');
+                }
+              }}
+              className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
             >
-              Admin Portal
-            </button>
+              Support &amp; Complaints
+            </a>
           </div>
         </div>
 

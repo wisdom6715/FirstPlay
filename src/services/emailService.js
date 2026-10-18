@@ -9,7 +9,7 @@
 
 import { slugify } from '../sitemap';
 
-export const SITE_URL = 'https://firstplay.app';
+export const SITE_URL = 'https://firstplay.fun';
 
 /**
  * Shared, high-contrast, responsive Apple-inspired HTML email layout

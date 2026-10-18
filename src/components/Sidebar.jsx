@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, Heart, LayoutGrid, Search, Settings, Sun, Moon, X, Download, Megaphone, Check, Gift, Ticket, Trophy } from 'lucide-react';
+import { Star, Heart, LayoutGrid, Search, Settings, Sun, Moon, X, Download, Megaphone, Check, Gift, Ticket, Trophy, HelpCircle } from 'lucide-react';
 import { detectUserOS, isPwaInstalled } from '../utils/pwaUtils';
 
 export default function Sidebar({ 
@@ -34,7 +34,8 @@ export default function Sidebar({
     { id: 'tournaments', label: 'Tournaments', icon: Trophy },
     { id: 'gifts', label: 'Rewards', icon: Gift },
     { id: 'redeem', label: 'Redeem', icon: Ticket },
-    { id: 'promote', label: 'Promote', icon: Megaphone }
+    { id: 'promote', label: 'Promote', icon: Megaphone },
+    { id: 'support', label: 'Support', icon: HelpCircle }
   ];
 
   const handleNavClick = (tabId) => {
