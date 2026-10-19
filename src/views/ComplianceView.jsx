@@ -111,13 +111,17 @@ export default function ComplianceView({
           {/* Quick Desk Contact Badges */}
           <div className="pt-2 flex flex-wrap items-center gap-3 text-xs">
             <a
-              href="https://promote.firstplay.fun"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200 hover:text-[#0071e3] dark:hover:text-[#0a84ff] border border-zinc-200 dark:border-white/10 font-bold transition"
+              href="/promote"
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  onNavigateTab?.('promote');
+                }
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-200 hover:text-[#0071e3] dark:hover:text-[#0a84ff] border border-zinc-200 dark:border-white/10 font-bold transition cursor-pointer"
             >
               <Layers size={13} className="text-[#0071e3]" />
-              <span>Portal: promote.firstplay.fun</span>
+              <span>Portal: firstplay.fun/promote</span>
               <ExternalLink size={11} className="text-zinc-400" />
             </a>
 
@@ -188,14 +192,18 @@ export default function ComplianceView({
                   Official Creator &amp; Publisher Onboarding
                 </span>
                 <p className="font-bold text-sm text-zinc-900 dark:text-white">
-                  promote.firstplay.fun
+                  firstplay.fun/promote
                 </p>
               </div>
               <a
-                href="https://promote.firstplay.fun"
-                target="_blank"
-                rel="noreferrer"
-                className="px-4 py-2 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white font-bold text-xs inline-flex items-center gap-1.5 transition shadow-xs w-fit"
+                href="/promote"
+                onClick={(e) => {
+                  if (!e.ctrlKey && !e.metaKey) {
+                    e.preventDefault();
+                    onNavigateTab?.('promote');
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white font-bold text-xs inline-flex items-center gap-1.5 transition shadow-xs w-fit cursor-pointer"
               >
                 <span>Visit Developer Portal</span>
                 <ExternalLink size={12} />
@@ -204,10 +212,10 @@ export default function ComplianceView({
 
             <ol className="space-y-3 list-decimal list-inside pl-1 text-zinc-700 dark:text-zinc-300">
               <li className="leading-relaxed">
-                <strong>Direct Developer Submissions:</strong> Game developers, studios, and authorized rights-holders register their profiles, submit their web-based games, and provide proof of ownership or distribution authority via <a href="https://promote.firstplay.fun" target="_blank" rel="noreferrer" className="text-[#0071e3] dark:text-[#0a84ff] underline">promote.firstplay.fun</a>.
+                <strong>Direct Developer Submissions:</strong> Game developers, studios, and authorized rights-holders register their profiles, submit their web-based games, and provide proof of ownership or distribution authority via <a href="/promote" onClick={(e) => { if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); onNavigateTab?.('promote'); } }} className="text-[#0071e3] dark:text-[#0a84ff] underline cursor-pointer">firstplay.fun/promote</a>.
               </li>
               <li className="leading-relaxed">
-                <strong>Developer Warranty &amp; Representation:</strong> By submitting content through <code className="font-mono text-xs bg-zinc-100 dark:bg-white/10 px-1 py-0.5 rounded">promote.firstplay.fun</code>, each developer legally warrants and represents that:
+                <strong>Developer Warranty &amp; Representation:</strong> By submitting content through <code className="font-mono text-xs bg-zinc-100 dark:bg-white/10 px-1 py-0.5 rounded">firstplay.fun/promote</code>, each developer legally warrants and represents that:
                 <ul className="list-disc list-inside mt-2 space-y-1.5 pl-4 text-xs text-zinc-600 dark:text-zinc-400">
                   <li>They own all intellectual property, trademarks, assets, audio, and code utilized in the game, or hold valid worldwide distribution licenses.</li>
                   <li>The game contains no malicious code, external executable downloads, obfuscated payloads, or unauthorized tracking mechanisms.</li>
@@ -378,7 +386,7 @@ export default function ComplianceView({
 
           <div className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed space-y-3 font-normal pl-0 sm:pl-10">
             <p>
-              Game developers who have onboarded their games via <a href="https://promote.firstplay.fun" target="_blank" rel="noreferrer" className="text-[#0071e3] dark:text-[#0a84ff] underline">promote.firstplay.fun</a> retain the right to edit, pause, or permanently delete their listings and games at any time through their developer dashboard.
+              Game developers who have onboarded their games via <a href="/promote" onClick={(e) => { if (!e.ctrlKey && !e.metaKey) { e.preventDefault(); onNavigateTab?.('promote'); } }} className="text-[#0071e3] dark:text-[#0a84ff] underline cursor-pointer">firstplay.fun/promote</a> retain the right to edit, pause, or permanently delete their listings and games at any time through their developer dashboard.
             </p>
             <p>
               Deletion takes effect immediately across all active client installations, tournament schedules, and live server catalog feeds.
@@ -402,12 +410,16 @@ export default function ComplianceView({
               </span>
               <p>
                 <a 
-                  href="https://promote.firstplay.fun" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="font-bold text-sm text-[#0071e3] dark:text-[#0a84ff] hover:underline inline-flex items-center gap-1"
+                  href="/promote" 
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      onNavigateTab?.('promote');
+                    }
+                  }}
+                  className="font-bold text-sm text-[#0071e3] dark:text-[#0a84ff] hover:underline inline-flex items-center gap-1 cursor-pointer"
                 >
-                  <span>https://promote.firstplay.fun</span>
+                  <span>https://firstplay.fun/promote</span>
                   <ExternalLink size={12} />
                 </a>
               </p>
