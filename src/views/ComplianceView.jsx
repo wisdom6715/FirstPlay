@@ -337,14 +337,46 @@ export default function ComplianceView({
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">
                     Send your notice directly to <code className="font-mono text-zinc-800 dark:text-zinc-200 bg-zinc-200/60 dark:bg-white/10 px-1 py-0.5 rounded">compliance@firstplay.fun</code> or <code className="font-mono text-zinc-800 dark:text-zinc-200 bg-zinc-200/60 dark:bg-white/10 px-1 py-0.5 rounded">privacy@firstplay.fun</code> with the subject line:
                   </p>
-                  <div className="p-2.5 rounded-lg bg-zinc-900 text-zinc-100 font-mono text-xs flex items-center justify-between">
-                    <span>[URGENT] Game Takedown Request - [Game Name]</span>
-                    <a
-                      href="mailto:compliance@firstplay.fun?subject=%5BURGENT%5D%20Game%20Takedown%20Request%20-%20"
-                      className="px-2 py-1 rounded bg-[#0071e3] text-white font-sans font-bold text-[11px] hover:bg-[#0077ed] transition"
-                    >
-                      Draft Email
-                    </a>
+                  <div className="p-3 rounded-xl bg-zinc-100 dark:bg-white/[0.06] border border-zinc-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2 overflow-x-auto py-0.5">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 shrink-0">Subject:</span>
+                      <code className="font-mono text-xs font-semibold text-zinc-900 dark:text-zinc-100 select-all">
+                        [URGENT] Game Takedown Request - [Game Name]
+                      </code>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                            navigator.clipboard.writeText('[URGENT] Game Takedown Request - [Game Name]');
+                            setCopiedEmail('[URGENT] Game Takedown Request - [Game Name]');
+                            setTimeout(() => setCopiedEmail(null), 2500);
+                          }
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-white dark:bg-white/10 hover:bg-zinc-50 dark:hover:bg-white/15 text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-white/10 font-sans font-bold text-[11px] inline-flex items-center gap-1.5 transition cursor-pointer"
+                        title="Copy Subject"
+                      >
+                        {copiedEmail === '[URGENT] Game Takedown Request - [Game Name]' ? (
+                          <>
+                            <Check size={12} className="text-emerald-500" />
+                            <span>Copied</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy size={12} />
+                            <span>Copy Subject</span>
+                          </>
+                        )}
+                      </button>
+                      <a
+                        href="mailto:compliance@firstplay.fun?subject=%5BURGENT%5D%20Game%20Takedown%20Request%20-%20"
+                        className="px-3 py-1.5 rounded-lg bg-[#0071e3] hover:bg-[#0077ed] text-white font-sans font-bold text-[11px] inline-flex items-center gap-1.5 transition shadow-xs cursor-pointer"
+                      >
+                        <Mail size={12} />
+                        <span>Draft Email</span>
+                      </a>
+                    </div>
                   </div>
                 </div>
 
