@@ -488,12 +488,6 @@
 
 [data-theme="light"] [data-keep-white],
 [data-theme="light"] [data-keep-white] *,
-[data-theme="light"] [role="status"][data-keep-white],
-[data-theme="light"] [role="status"][data-keep-white] *,
-[data-theme="light"] [role="status"].bg-zinc-900,
-[data-theme="light"] [role="status"].bg-zinc-900 *,
-[data-theme="light"] [role="status"].bg-zinc-950,
-[data-theme="light"] [role="status"].bg-zinc-950 *,
 [data-theme="light"] button[class*="bg-[#0071e3]"],
 [data-theme="light"] button[class*="bg-[#0071e3]"] *,
 [data-theme="light"] button[class*="bg-[#0a84ff]"],
@@ -511,7 +505,12 @@
 [data-theme="light"] a[class*="bg-zinc-900"],
 [data-theme="light"] a[class*="bg-zinc-900"] * {
   color: #ffffff !important;
-  fill: #ffffff !important;
+}
+
+/* Ensure Lucide stroke icons preserve transparent fill */
+svg.lucide[fill="none"],
+svg.lucide:not([fill]) {
+  fill: none !important;
 }
 
 [data-theme="light"] .text-zinc-100:not(.hero-banner-content *) {

@@ -215,6 +215,14 @@ export function setTabSEO(tab, categoryFilter = 'All') {
       });
       break;
 
+    case 'compliance':
+      updateSEO({
+        title: 'Game Licensing & Content Policy (Apple Guidelines 4.7 & 5.2) — FirstPlay',
+        description: 'FirstPlay Game Licensing, Apple App Store Guidelines 4.7 & 5.2 compliance, content distribution authorizations, and 24-hour express removal policy.',
+        canonical: `${SITE_URL}/compliance`
+      });
+      break;
+
     default:
       updateSEO(DEFAULT_SEO);
   }

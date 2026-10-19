@@ -31,11 +31,13 @@ import {
   Ticket,
   Menu,
   Tag,
-  Trophy
+  Trophy,
+  Sparkles
 } from 'lucide-react';
 import appLogo from '../assets/icon.png';
 import AdminGiftManager from '../components/AdminGiftManager';
 import AdminTournamentManager from '../components/AdminTournamentManager';
+import AdminPromotionManager from '../components/AdminPromotionManager';
 
 const PRESET_REJECTION_REASONS = [
   'Launch URL is broken, inaccessible, or returns an HTTP error.',
@@ -51,7 +53,19 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const [authChecking, setAuthChecking] = useState(true);
 
   // Navigation State
-  const [activeNav, setActiveNav] = useState('catalog'); // 'catalog' | 'wheel' | 'gifts' | 'redemptions'
+  const [activeNav, setActiveNav] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname.toLowerCase();
+      if (path.includes('promotions') || path.includes('promotion')) return 'promotions';
+      if (path.includes('tournaments') || path.includes('tournament')) return 'tournaments';
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') || params.get('nav');
+      if (tab && ['catalog', 'wheel', 'gifts', 'categories', 'redemptions', 'tournaments', 'promotions'].includes(tab)) {
+        return tab;
+      }
+    }
+    return 'catalog';
+  });
   const [isGiftDropdownOpen, setIsGiftDropdownOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [giftsCount, setGiftsCount] = useState(0);
@@ -753,6 +767,35 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                 </span>
               </button>
             </div>
+
+            {/* Nav Button 4: Promotions */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('promotions');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between text-left cursor-pointer group ${
+                  activeNav === 'promotions'
+                    ? 'bg-[#0071e3] text-white shadow-xs'
+                    : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sparkles 
+                    size={16} 
+                    className={activeNav === 'promotions' ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-800'} 
+                  />
+                  <span>Promotions</span>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                  activeNav === 'promotions' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                }`}>
+                  Banners
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Sidebar Footer */}
@@ -1263,6 +1306,11 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     </>
         ) : activeNav === 'tournaments' ? (
           <AdminTournamentManager 
+            allGames={allGamesList.filter(g => !g.isUnderReview && g.active !== false && g.active !== 'false' && g.status !== 'disabled')}
+            onShowToast={showToast}
+          />
+        ) : activeNav === 'promotions' ? (
+          <AdminPromotionManager 
             allGames={allGamesList.filter(g => !g.isUnderReview && g.active !== false && g.active !== 'false' && g.status !== 'disabled')}
             onShowToast={showToast}
           />
@@ -1798,29 +1846,33 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
       {toastMessage && (
         <div
           role="status"
-          data-keep-white
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-2.5 animate-in slide-in-from-bottom-3 duration-200 select-none ${
-            toastMessage.type === 'error'
-              ? 'bg-red-50 border-red-200 text-red-900 shadow-red-500/10'
-              : toastMessage.type === 'info'
-              ? 'bg-zinc-900 border-zinc-700/80 text-white shadow-2xl ring-1 ring-white/10'
-              : 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-emerald-500/10'
-          }`}
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 max-w-md px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-3 animate-in slide-in-from-bottom-3 duration-200 select-none bg-white dark:bg-[#18181b] text-zinc-900 dark:text-white border-zinc-200 dark:border-white/15 ring-1 ring-black/5 dark:ring-white/10"
         >
           {toastMessage.type === 'error' ? (
-            <AlertCircle size={16} className="text-red-600 shrink-0" />
+            <div className="w-6 h-6 rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+              <AlertCircle size={14} className="stroke-[2.5]" />
+            </div>
           ) : toastMessage.type === 'info' ? (
-            <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+            <div className="w-6 h-6 rounded-full bg-blue-500/15 text-[#0071e3] dark:text-blue-400 flex items-center justify-center shrink-0">
+              <Check size={14} className="stroke-[2.5]" />
+            </div>
           ) : (
-            <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+            <div className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Check size={14} className="stroke-[2.5]" />
+            </div>
           )}
-          <span 
-            data-keep-white
-            style={toastMessage.type === 'info' ? { color: '#ffffff' } : undefined}
-            className={toastMessage.type === 'info' ? 'text-white font-bold tracking-normal' : 'tracking-normal'}
-          >
+          <span className="flex-1 text-zinc-900 dark:text-white font-bold tracking-normal leading-snug">
             {toastMessage.message}
           </span>
+          <button
+            type="button"
+            onClick={() => setToastMessage(null)}
+            className="w-5 h-5 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-white transition cursor-pointer shrink-0 ml-1"
+            title="Dismiss"
+          >
+            <X size={13} />
+          </button>
         </div>
       )}
     </div>

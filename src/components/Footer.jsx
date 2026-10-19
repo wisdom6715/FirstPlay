@@ -136,6 +136,38 @@ export default function Footer({
                 </button>
               </li>
               <li>
+                <a
+                  href="/support"
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      onNavigateTab?.('support');
+                      const container = document.querySelector('.overflow-y-auto');
+                      container?.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  className="hover:text-white transition-colors cursor-pointer text-left block"
+                >
+                  Support
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/compliance"
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      onNavigateTab?.('compliance');
+                      const container = document.querySelector('.overflow-y-auto');
+                      container?.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  className="hover:text-white transition-colors cursor-pointer text-left block"
+                >
+                  Licensing &amp; Compliance
+                </a>
+              </li>
+              <li>
                 <button
                   type="button"
                   onClick={() => {
@@ -183,7 +215,7 @@ export default function Footer({
             © 2026 FirstPlay. All rights reserved.
           </p>
 
-          <div className="flex items-center gap-6 order-1 sm:order-2">
+          <div className="flex items-center flex-wrap gap-x-6 gap-y-2 order-1 sm:order-2">
             <a
               href="/privacy"
               onClick={(e) => {
@@ -207,6 +239,18 @@ export default function Footer({
               className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
             >
               Terms of Service
+            </a>
+            <a
+              href="/compliance"
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  onNavigateTab?.('compliance');
+                }
+              }}
+              className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Licensing &amp; Compliance
             </a>
             <a
               href="/support"

@@ -24,6 +24,7 @@ import PwaDownloadNotification from './components/PwaDownloadNotification';
 import PrivacyView from './views/PrivacyView';
 import TermsView from './views/TermsView';
 import SupportView from './views/SupportView';
+import ComplianceView from './views/ComplianceView';
 import { Minimize2, X, Check, Download, Info, ExternalLink } from 'lucide-react';
 import { setTabSEO, setGameSEO, updateCatalogItemListSEO } from './services/seoService';
 import { slugify } from './sitemap';
@@ -33,7 +34,7 @@ function getTabFromPath(pathname) {
   const clean = (pathname || '').toLowerCase().replace(/^\/+|\/+$/g, '');
   if (clean.startsWith('game/')) return 'discover';
   if (clean === 'admin/auth' || clean === 'admin/login') return 'admin-auth';
-  if (clean === 'admin/dashboard' || clean === 'admin') return 'admin-dashboard';
+  if (clean === 'admin/dashboard' || clean === 'admin' || clean === 'admin/promotions' || clean === 'admin/tournaments') return 'admin-dashboard';
   if (clean === 'promote') return 'promote';
   if (clean === 'settings') return 'settings';
   if (clean === 'search') return 'search';
@@ -45,6 +46,7 @@ function getTabFromPath(pathname) {
   if (clean === 'privacy' || clean === 'privacy-policy') return 'privacy';
   if (clean === 'terms-of-service' || clean === 'terms' || clean === 'termsofservice') return 'terms';
   if (clean === 'support' || clean === 'contact' || clean === 'complaint' || clean === 'complaints' || clean === 'help') return 'support';
+  if (clean === 'compliance' || clean === 'legal/compliance' || clean === 'licensing') return 'compliance';
   return 'discover';
 }
 
@@ -55,6 +57,7 @@ function getPathFromTab(tab) {
   if (tab === 'privacy') return '/privacy';
   if (tab === 'terms') return '/terms-of-service';
   if (tab === 'support') return '/support';
+  if (tab === 'compliance') return '/compliance';
   return `/${tab}`;
 }
 
@@ -668,6 +671,16 @@ export default function App() {
                     onNavigateTab={navigateToTab}
                     onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
                     onOpenTerms={handleOpenTerms}
+                  />
+                )}
+
+                {currentTab === 'compliance' && (
+                  <ComplianceView
+                    onNavigateTab={navigateToTab}
+                    onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
+                    onOpenTerms={handleOpenTerms}
+                    onNavigateCategory={handleNavigateCategory}
+                    onNavigateSection={handleNavigateSection}
                   />
                 )}
               </>
