@@ -17,7 +17,7 @@ import { INITIAL_LISTINGS } from '../data/seedCatalog.js';
 
 const STORAGE_KEY_LISTINGS = 'firstplay_local_listings';
 const STORAGE_KEY_RECENTS = 'firstplay_recently_played';
-const STORAGE_KEY_BANNERS = 'firstplay_local_banners';
+const STORAGE_KEY_BANNERS = 'firstplay_local_promotional_banners';
 
 // Local storage cache used strictly for offline persistence of Firebase listings
 function getLocalStoredListings() {
