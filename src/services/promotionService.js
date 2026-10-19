@@ -2,7 +2,7 @@
  * promotionService.js
  * 
  * Authoritative administrative service for managing promotional banners and sponsor spotlights
- * stored in Firebase Firestore ('promotional_banners' and 'promotional' collections).
+ * stored in Firebase Firestore ('promotional_banners' collection).
  */
 
 import { 
@@ -115,30 +115,27 @@ function normalizePromotionDoc(docId, data, sourceCollection = PRIMARY_PROMOTION
 
 export const promotionService = {
   /**
-   * Fetch all promotions from promotional_banners (and promotional fallback)
+   * Fetch all promotions strictly from promotional_banners
    */
   async getPromotions() {
     if (!isFirebaseLive || !db) return [];
 
     const items = [];
     const seenIds = new Set();
-    const collectionsToQuery = ['promotional_banners', 'promotional'];
 
-    for (const colName of collectionsToQuery) {
-      try {
-        const snap = await getDocs(collection(db, colName));
-        snap.forEach(d => {
-          if (!seenIds.has(d.id)) {
-            seenIds.add(d.id);
-            const normalized = normalizePromotionDoc(d.id, d.data(), colName);
-            if (normalized) {
-              items.push(normalized);
-            }
+    try {
+      const snap = await getDocs(collection(db, PRIMARY_PROMOTION_COLLECTION));
+      snap.forEach(d => {
+        if (!seenIds.has(d.id)) {
+          seenIds.add(d.id);
+          const normalized = normalizePromotionDoc(d.id, d.data(), PRIMARY_PROMOTION_COLLECTION);
+          if (normalized) {
+            items.push(normalized);
           }
-        });
-      } catch (err) {
-        console.warn(`[promotionService] Could not read ${colName}:`, err.message);
-      }
+        }
+      });
+    } catch (err) {
+      console.warn(`[promotionService] Could not read ${PRIMARY_PROMOTION_COLLECTION}:`, err.message);
     }
 
     // Sort newest created_at first

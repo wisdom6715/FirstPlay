@@ -388,29 +388,20 @@ export const catalogService = {
         const banners = [];
         const seenIds = new Set();
 
-        // Query candidate promotional collections in Firebase (primary: 'promotional')
-        const collectionCandidates = ['promotional', 'promotional_banners', 'promotion_banner', 'promotions'];
-
-        for (const colName of collectionCandidates) {
-          try {
-            const snap = await getDocs(collection(db, colName));
-            snap.forEach(d => {
-              if (seenIds.has(d.id)) return;
-              const data = d.data();
-              const normalized = normalizeBannerDoc(d.id, data);
-              if (normalized && (normalized.banner_url || normalized.image_url)) {
-                seenIds.add(d.id);
-                banners.push(normalized);
-              }
-            });
-
-            // If the primary 'promotional' collection returned items, prioritize it
-            if (colName === 'promotional' && banners.length > 0) {
-              break;
+        // Query promotional banners strictly from 'promotional_banners' collection
+        try {
+          const snap = await getDocs(collection(db, 'promotional_banners'));
+          snap.forEach(d => {
+            if (seenIds.has(d.id)) return;
+            const data = d.data();
+            const normalized = normalizeBannerDoc(d.id, data);
+            if (normalized && (normalized.banner_url || normalized.image_url)) {
+              seenIds.add(d.id);
+              banners.push(normalized);
             }
-          } catch (colErr) {
-            console.warn(`[FirstPlay] Could not query ${colName} collection:`, colErr.message);
-          }
+          });
+        } catch (colErr) {
+          console.warn('[FirstPlay] Could not query promotional_banners collection:', colErr.message);
         }
 
         return banners;
@@ -753,7 +744,7 @@ export const catalogService = {
     // 2. If it has a banner, also create a promotional document linking to the game_id
     if (submission.banner_url) {
       try {
-        await addDoc(collection(db, 'promotional'), {
+        await addDoc(collection(db, 'promotional_banners'), {
           title: name,
           name: name,
           subtitle: submission.tagline || (submission.description || '').slice(0, 80),
