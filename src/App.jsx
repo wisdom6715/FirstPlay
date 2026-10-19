@@ -33,7 +33,7 @@ function getTabFromPath(pathname) {
   const clean = (pathname || '').toLowerCase().replace(/^\/+|\/+$/g, '');
   if (clean.startsWith('game/')) return 'discover';
   if (clean === 'admin/auth' || clean === 'admin/login') return 'admin-auth';
-  if (clean === 'admin/dashboard' || clean === 'admin') return 'admin-dashboard';
+  if (clean === 'admin/dashboard' || clean === 'admin' || clean === 'admin/promotions' || clean === 'admin/tournaments') return 'admin-dashboard';
   if (clean === 'promote') return 'promote';
   if (clean === 'settings') return 'settings';
   if (clean === 'search') return 'search';

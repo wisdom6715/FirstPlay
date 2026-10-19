@@ -58,6 +58,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /promotional_banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // 3. Submissions from Public /promote View
     // Public game and campaign submission on /promote; moderation restricted to admins.
     match /under_review/{submissionId} {

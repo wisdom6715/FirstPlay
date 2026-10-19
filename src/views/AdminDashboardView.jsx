@@ -31,11 +31,13 @@ import {
   Ticket,
   Menu,
   Tag,
-  Trophy
+  Trophy,
+  Sparkles
 } from 'lucide-react';
 import appLogo from '../assets/icon.png';
 import AdminGiftManager from '../components/AdminGiftManager';
 import AdminTournamentManager from '../components/AdminTournamentManager';
+import AdminPromotionManager from '../components/AdminPromotionManager';
 
 const PRESET_REJECTION_REASONS = [
   'Launch URL is broken, inaccessible, or returns an HTTP error.',
@@ -51,7 +53,19 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
   const [authChecking, setAuthChecking] = useState(true);
 
   // Navigation State
-  const [activeNav, setActiveNav] = useState('catalog'); // 'catalog' | 'wheel' | 'gifts' | 'redemptions'
+  const [activeNav, setActiveNav] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname.toLowerCase();
+      if (path.includes('promotions') || path.includes('promotion')) return 'promotions';
+      if (path.includes('tournaments') || path.includes('tournament')) return 'tournaments';
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') || params.get('nav');
+      if (tab && ['catalog', 'wheel', 'gifts', 'categories', 'redemptions', 'tournaments', 'promotions'].includes(tab)) {
+        return tab;
+      }
+    }
+    return 'catalog';
+  });
   const [isGiftDropdownOpen, setIsGiftDropdownOpen] = useState(true);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [giftsCount, setGiftsCount] = useState(0);
@@ -753,6 +767,35 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
                 </span>
               </button>
             </div>
+
+            {/* Nav Button 4: Promotions */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveNav('promotions');
+                  setIsMobileSidebarOpen(false);
+                }}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-between text-left cursor-pointer group ${
+                  activeNav === 'promotions'
+                    ? 'bg-[#0071e3] text-white shadow-xs'
+                    : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sparkles 
+                    size={16} 
+                    className={activeNav === 'promotions' ? 'text-white' : 'text-zinc-500 group-hover:text-zinc-800'} 
+                  />
+                  <span>Promotions</span>
+                </div>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                  activeNav === 'promotions' ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-800 border border-blue-200'
+                }`}>
+                  Banners
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Sidebar Footer */}
@@ -1263,6 +1306,11 @@ export default function AdminDashboardView({ onNavigateAuth, onNavigateHome }) {
     </>
         ) : activeNav === 'tournaments' ? (
           <AdminTournamentManager 
+            allGames={allGamesList.filter(g => !g.isUnderReview && g.active !== false && g.active !== 'false' && g.status !== 'disabled')}
+            onShowToast={showToast}
+          />
+        ) : activeNav === 'promotions' ? (
+          <AdminPromotionManager 
             allGames={allGamesList.filter(g => !g.isUnderReview && g.active !== false && g.active !== 'false' && g.status !== 'disabled')}
             onShowToast={showToast}
           />
