@@ -36,8 +36,10 @@ coverage/
 *.lcov
 .nyc_output/
 
-# Firebase Emulators & Debug Logs
+# Firebase Rules, Emulators & Debug Logs
 .firebase/
+firestore.rules
+firestore.indexes.json
 firebase-debug.log*
 firestore-debug.log*
 ui-debug.log*

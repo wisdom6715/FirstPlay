@@ -168,6 +168,22 @@ export default function Footer({
                 </a>
               </li>
               <li>
+                <a
+                  href="/request/account-removal"
+                  onClick={(e) => {
+                    if (!e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      onNavigateTab?.('account-removal');
+                      const container = document.querySelector('.overflow-y-auto');
+                      container?.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  className="hover:text-white transition-colors cursor-pointer text-left block"
+                >
+                  Account Removal
+                </a>
+              </li>
+              <li>
                 <button
                   type="button"
                   onClick={() => {
@@ -251,6 +267,18 @@ export default function Footer({
               className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
             >
               Licensing &amp; Compliance
+            </a>
+            <a
+              href="/request/account-removal"
+              onClick={(e) => {
+                if (!e.ctrlKey && !e.metaKey) {
+                  e.preventDefault();
+                  onNavigateTab?.('account-removal');
+                }
+              }}
+              className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Account Removal
             </a>
             <a
               href="/support"
