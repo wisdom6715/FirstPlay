@@ -223,6 +223,14 @@ export function setTabSEO(tab, categoryFilter = 'All') {
       });
       break;
 
+    case 'account-removal':
+      updateSEO({
+        title: 'Request Account & Data Deletion (Apple Guideline 5.1.1) — FirstPlay',
+        description: 'Submit an account removal and personal data deletion request under Apple App Store Review Guideline 5.1.1(v) and global privacy regulations.',
+        canonical: `${SITE_URL}/request/account-removal`
+      });
+      break;
+
     default:
       updateSEO(DEFAULT_SEO);
   }

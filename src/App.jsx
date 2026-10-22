@@ -25,6 +25,7 @@ import PrivacyView from './views/PrivacyView';
 import TermsView from './views/TermsView';
 import SupportView from './views/SupportView';
 import ComplianceView from './views/ComplianceView';
+import AccountRemovalView from './views/AccountRemovalView';
 import { Minimize2, X, Check, Download, Info, ExternalLink } from 'lucide-react';
 import { setTabSEO, setGameSEO, updateCatalogItemListSEO } from './services/seoService';
 import { slugify } from './sitemap';
@@ -47,6 +48,7 @@ function getTabFromPath(pathname) {
   if (clean === 'terms-of-service' || clean === 'terms' || clean === 'termsofservice') return 'terms';
   if (clean === 'support' || clean === 'contact' || clean === 'complaint' || clean === 'complaints' || clean === 'help') return 'support';
   if (clean === 'compliance' || clean === 'legal/compliance' || clean === 'licensing') return 'compliance';
+  if (clean === 'request/account-removal' || clean === 'account-removal' || clean === 'delete-account') return 'account-removal';
   return 'discover';
 }
 
@@ -58,6 +60,7 @@ function getPathFromTab(tab) {
   if (tab === 'terms') return '/terms-of-service';
   if (tab === 'support') return '/support';
   if (tab === 'compliance') return '/compliance';
+  if (tab === 'account-removal') return '/request/account-removal';
   return `/${tab}`;
 }
 
@@ -676,6 +679,16 @@ export default function App() {
 
                 {currentTab === 'compliance' && (
                   <ComplianceView
+                    onNavigateTab={navigateToTab}
+                    onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
+                    onOpenTerms={handleOpenTerms}
+                    onNavigateCategory={handleNavigateCategory}
+                    onNavigateSection={handleNavigateSection}
+                  />
+                )}
+
+                {currentTab === 'account-removal' && (
+                  <AccountRemovalView
                     onNavigateTab={navigateToTab}
                     onOpenPrivacyPolicy={handleOpenPrivacyPolicy}
                     onOpenTerms={handleOpenTerms}
